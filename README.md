@@ -50,17 +50,60 @@ flowchart LR
 |---|---|
 | Extraction | Meltano (tap Singer développé pour l'API France Travail) |
 | Stockage brut | Google Cloud Storage (JSONL) |
-| Enrichissement | LLM open source, sorties structurées validées par schéma |
+| Enrichissement | LLM open source exécuté en local (Ollama ou llama.cpp), sorties structurées validées par schéma |
 | Entrepôt | BigQuery (région `europe-west1`) |
-| Transformation | dbt |
+| Transformation | dbt (moteur Fusion) |
 | Application | Oracle Autonomous Database + APEX, PL/SQL |
 | Infrastructure | Terraform |
-| CI/CD | GitHub Actions |
+| CI/CD | GitHub Actions, authentification GCP sans clé (Workload Identity Federation) |
 | Orchestration | Airflow *(à venir)* |
+
+## Environnements et infrastructure
+
+Deux environnements isolés, **un projet GCP chacun**. Le code est identique, seules les valeurs changent (projet, rétention, garde-fous).
+
+| Aspect | dev | prod |
+|---|---|---|
+| Rôle | bac à sable jetable, périmètre réduit | données réelles, déploiement sur approbation |
+| Rétention du brut | 7 jours | 30 jours |
+| Destruction des buckets | autorisée (`force_destroy`) | non |
+| Déploiement | automatique | approbation manuelle, branche `main` uniquement |
+
+Ce que l'infrastructure crée dans chaque projet :
+- 3 buckets GCS : `raw` (brut immuable), `enriched` (sorties du LLM) et `meltano-state` (état de l'extraction incrémentale) ;
+- le dataset BigQuery `raw` (dbt crée ses propres datasets) ;
+- 3 service accounts au moindre privilège : `sa-extract`, `sa-dbt`, `sa-enrich` ;
+- un service account de déploiement `sa-deployer` et un pool Workload Identity Federation, limités à ce dépôt et à des GitHub Environments précis.
+
+**Aucune clé JSON** n'existe : en local, j'agis par impersonation de service accounts ; depuis GitHub Actions, l'accès passe par Workload Identity Federation.
+
+### Reproduire la mise en place
+
+Prérequis : un compte GCP avec facturation, `gcloud`, Terraform 1.6 ou plus.
+
+```bash
+# 1. Projets, APIs et buckets de state (une seule fois)
+export PROJECT_PREFIX="jobboard" SUFFIX="<suffixe-aléatoire>" BILLING_ACCOUNT="<id-facturation>"
+./infra/bootstrap/bootstrap.sh
+
+# 2. Plateforme, d'abord en dev
+export TF_VAR_user_email="<ton-adresse>"
+gcloud auth application-default set-quota-project jobboard-dev-<suffixe>
+cd infra/envs/dev && terraform init && terraform plan && terraform apply
+
+# 3. Identités pour la CI (Workload Identity Federation)
+cd ../../identity/dev && terraform init && terraform plan && terraform apply
+```
+
+Répéter ensuite pour la prod, en changeant le *quota project* de `gcloud` avant chaque environnement.
 
 ## Avancement
 
-- [ ] Infrastructure dev et prod (Terraform, Workload Identity Federation)
+- [x] Projets GCP dev et prod, bucket de state Terraform (script de bootstrap)
+- [x] Plateforme dev en Terraform (buckets, dataset BigQuery `raw`, service accounts, IAM)
+- [X] Plateforme prod en Terraform
+- [ ] Workload Identity Federation pour GitHub Actions (dev puis prod)
+- [ ] Tap Meltano France Travail (développement)
 - [ ] Extraction France Travail → GCS (Meltano)
 - [ ] Chargement BigQuery
 - [ ] Modélisation dbt (staging, marts) et tests
@@ -79,7 +122,7 @@ flowchart LR
 ## Structure du dépôt
 
 ```
-infra/          Terraform (modules et environnements dev / prod)
+infra/          Terraform : bootstrap, modules, envs/ (plateforme) et identity/ (CI), en dev et prod
 extraction/     Projet Meltano et tap France Travail
 loading/        Chargement GCS → BigQuery
 dbt/            Projet dbt
@@ -89,6 +132,27 @@ oracle/         Migrations, packages PL/SQL, application APEX, données fictives
 
 ## Choix techniques et compromis
 
+| Choix | Raison | Alternative écartée |
+|---|---|---|
+| Un projet GCP par environnement | isolation simple et sûre des données et des droits | un seul projet avec des préfixes |
+| Deux environnements (dev, prod) | projet à un seul utilisateur ; des datasets éphémères par pull request et l'approbation de la prod jouent le rôle d'un environnement de test | un troisième environnement de recette |
+| Identifiants de projet avec suffixe aléatoire | unicité mondiale exigée par GCP, sans information personnelle | un suffixe lié à mon identité |
+| Région unique `europe-west1` | dans l'UE, coût inférieur à la multi-région et à Paris | multi-région `EU`, région américaine (quota gratuit GCS plus large mais moins cohérent avec le RGPD) |
+| Terraform avec state distant dans GCS | état partagé entre mon poste et la CI | state local |
+| Bucket de state sans versioning | fichier de quelques Ko, choix assumé pour un projet personnel (activable plus tard) | versioning activé, filet de sécurité peu coûteux |
+| `identity/` séparé de `envs/` | la CI ne peut pas modifier sa propre porte d'entrée, et détruire le dev n'entraîne pas la perte du pool WIF | tout dans un seul state |
+| Impersonation et Workload Identity Federation | aucune clé JSON à stocker ou à faire tourner, jetons de courte durée | clés de service accounts |
+| Un service account par usage | moindre privilège : l'extraction ne peut pas modifier les modèles, dbt ne peut pas écraser le brut | un compte unique |
+| LLM exécuté en local | aucun coût GPU cloud, données non envoyées à un prestataire | Cloud Run avec GPU, Vertex AI |
+| Extraction du domaine informatique, classification en aval | permet de suivre deux profils (Analytics Engineer, PL/SQL) et de changer la définition de « data » sans réextraire | filtre par mots-clés à l'API |
+| Pas de Secret Manager au départ | limiter la surface et les coûts ; les secrets sont dans les GitHub Environments | Secret Manager (à activer si le besoin apparaît) |
+| GitHub Actions planifié avant Airflow | suffisant pour une collecte quotidienne, sans infrastructure | Cloud Composer (coût élevé pour ce volume) |
+
+**Laissé de côté volontairement :** environnement de recette, orchestrateur managé, GPU cloud, Secret Manager.
+
+**Garde-fous de coût :** alerte de budget GCP, plafond `maximum_bytes_billed` sur les requêtes dbt de dev et de CI, quota quotidien BigQuery, rétention limitée du brut en dev.
+
+**Coût mensuel constaté :** *à compléter après quelques semaines d'exploitation.*
 
 ## Auteur
 
