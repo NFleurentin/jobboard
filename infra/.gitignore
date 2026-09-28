@@ -1,0 +1,6 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars.local
+# Ne PAS ignorer .terraform.lock.hcl : il fige les versions du provider
