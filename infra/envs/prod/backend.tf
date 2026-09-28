@@ -1,6 +1,6 @@
 terraform {
   backend "gcs" {
-    bucket = "jobboard-prod-nf89-tfstate"
+    bucket = "jobboard-prod-3b375b-tfstate"
     prefix = "platform"
   }
 }
