@@ -35,6 +35,13 @@
             "examples": [
                 "2023-03-20T15:45:00Z"
             ]
+        },
+        "_run_id": {
+            "description": "Identifiant du run d'extraction",
+            "type": [
+                "string",
+                "null"
+            ]
         }
     }
 }
