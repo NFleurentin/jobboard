@@ -1,0 +1,9 @@
+default_environment: dev
+project_id: 01a0ebd3-05c3-79a2-aae1-60c9e157b6d6
+send_anonymous_usage_stats: false
+
+include_paths:
+  #  - "./plugins/**/*.meltano.yml"
+  - "./environments/*.meltano.yml"
+#  - "./jobs/*.meltano.yml"
+#  - "./schedules/*.meltano.yml"
