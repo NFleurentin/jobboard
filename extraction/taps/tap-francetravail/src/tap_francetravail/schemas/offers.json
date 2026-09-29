@@ -39,9 +39,9 @@
         "_ingested_at": {
             "description": "Date d'ingestion de l'offre",
             "type": [
-                "string",
-                "null"
-            ]
+                "string"
+            ],
+            "format": "date-time"
         }
     }
 }
