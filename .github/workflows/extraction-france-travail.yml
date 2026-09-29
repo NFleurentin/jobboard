@@ -10,16 +10,19 @@ permissions:
   id-token: write # requis pour obtenir le jeton OIDC (Workload Identity Federation)
 
 jobs:
-  extract:
+  extract-and-load:
     runs-on: ubuntu-latest
     environment: prod-collect # limité à sa-extract, sans approbation manuelle
-    defaults:
-      run:
-        working-directory: extraction
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Générer les identifiants du run
+        run: |
+          echo "MELTANO_ENVIRONMENT=prod" >> "$GITHUB_ENV"
+          echo "GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID }}" >> "$GITHUB_ENV"
+          echo "INGESTED_AT=$(date -u +%Y%m%dT%H%M%SZ)" >> "$GITHUB_ENV"
 
       - name: Authentification GCP (Workload Identity Federation)
         uses: google-github-actions/auth@v2
@@ -36,13 +39,19 @@ jobs:
         run: pip install "meltano[gcs]"
 
       - name: Installer les plugins Meltano (tap et target)
-        run: meltano --environment=prod install
+        working-directory: extraction
+        run: meltano --environment="$MELTANO_ENVIRONMENT" install
         env:
           TAP_FRANCETRAVAIL_CLIENT_ID: ${{ secrets.TAP_FRANCETRAVAIL_CLIENT_ID }}
           TAP_FRANCETRAVAIL_CLIENT_SECRET: ${{ secrets.TAP_FRANCETRAVAIL_CLIENT_SECRET }}
 
-      - name: Lancer l'extraction
-        run: ./run.sh prod
+      - name: Extraction
+        working-directory: extraction
+        run: ./run.sh
         env:
           TAP_FRANCETRAVAIL_CLIENT_ID: ${{ secrets.TAP_FRANCETRAVAIL_CLIENT_ID }}
           TAP_FRANCETRAVAIL_CLIENT_SECRET: ${{ secrets.TAP_FRANCETRAVAIL_CLIENT_SECRET }}
+
+      - name: Chargement BigQuery
+        working-directory: loading
+        run: ./load.sh
