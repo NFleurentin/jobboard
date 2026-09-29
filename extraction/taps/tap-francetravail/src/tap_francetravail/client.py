@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import decimal
-import json
 import sys
 from datetime import UTC, datetime
 from functools import cached_property
@@ -96,7 +94,7 @@ class FranceTravailStream(RESTStream):
             return []
 
         # Payload complet
-        payload = response.json(parse_float=decimal.Decimal)
+        payload = response.json()
 
         # Extraction des records
         for record in extract_jsonpath(self.records_jsonpath, input=payload):
@@ -105,7 +103,7 @@ class FranceTravailStream(RESTStream):
             minimal_record = {
                 "id": record.get("id"),
                 "dateActualisation": record.get("dateActualisation"),
-                "_raw": json.dumps(record, default=str),  # payload brut complet
+                "_raw": record,  # payload brut complet
                 "_extracted_at": datetime.now(UTC).isoformat(),  # date d'extraction
             }
 
