@@ -1,0 +1,7 @@
+plugins:
+  loaders:
+    - name: target-gcs--francetravail
+      inherit_from: target-gcs
+      config:
+        key_prefix: france-travail/
+        key_naming_convention: "{stream}/ingestion_date={date}/run_id=${MELTANO_JOB_RUN_ID}/part-{timestamp}.jsonl"

@@ -1,0 +1,9 @@
+plugins:
+  loaders:
+    - name: target-gcs
+      variant: datateer
+      pip_url: git+https://github.com/Datateer/target-gcs.git setuptools<82
+      settings:
+        - name: credentials_file # supprime le défaut hérité du Hub, sans lui donner de valeur
+      config:
+        date_format: "%Y-%m-%d"
