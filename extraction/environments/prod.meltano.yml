@@ -1,2 +1,17 @@
 environments:
   - name: prod
+    config:
+      plugins:
+        extractors:
+          - name: tap-francetravail
+            config:
+              search_queries:
+                - keywords: "sql"
+                - keywords: "analytics engineer"
+                - keywords: "plsql"
+                - keywords: "pl-sql"
+                - keywords: "pl/sql"
+                - keywords: "pl sql"
+                - keywords: "snowflake"
+                - keywords: "dbt"
+                - keywords: "développeur oracle"

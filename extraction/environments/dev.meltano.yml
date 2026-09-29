@@ -1,2 +1,10 @@
 environments:
   - name: dev
+    config:
+      plugins:
+        extractors:
+          - name: tap-francetravail
+            config:
+              search_queries:
+                - keywords: "sql"
+                - keywords: "analytics engineer"
