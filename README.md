@@ -126,7 +126,7 @@ Le script fixe un `run_id`, pointe le state Meltano vers le bucket GCS de l'envi
 - [x] Workload Identity Federation pour GitHub Actions (dev puis prod)
 - [x] Tap Meltano France Travail (développement)
 - [x] Extraction France Travail → GCS (Meltano), state distant, run.sh
-- [ ] Workflow GitHub Actions planifié (collecte quotidienne)
+- [X] Workflow GitHub Actions planifié (collecte quotidienne)
 - [ ] Chargement BigQuery
 - [ ] Modélisation dbt (staging, marts) et tests
 - [ ] Premier dashboard
