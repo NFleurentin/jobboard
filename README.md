@@ -97,14 +97,36 @@ cd ../../identity/dev && terraform init && terraform plan && terraform apply
 
 Répéter ensuite pour la prod, en changeant le *quota project* de `gcloud` avant chaque environnement.
 
+## Extraction (Meltano)
+
+Un tap Singer développé pour l'API France Travail (authentification OAuth2, pagination, filtrage par mots-clés/région) alimente un run Meltano complet, en **full-refresh** à chaque exécution plutôt qu'en incrémental : l'API ne signale jamais les offres qui disparaissent, donc chaque run donne l'ensemble exact des offres actives à cet instant, ce qui permettra à dbt de déduire en aval quelles offres ont fermé depuis le run précédent.
+
+**Ce que produit un run :**
+```
+gs://jobboard-<env>-3b375b-raw/france-travail/offers/ingestion_date=YYYY-MM-DD/run_id=<RUN_ID>/part-<timestamp>.jsonl
+```
+
+Chaque enregistrement contient `id`, `dateActualisation`, `_raw` (le payload complet de l'offre, sérialisé en JSON texte), `_extracted_at` et `_run_id`.
+
+**Lancer une extraction :**
+```bash
+cd extraction
+./run.sh dev    # ou prod
+```
+
+Le script fixe un `run_id`, pointe le state Meltano vers le bucket GCS de l'environnement choisi, puis lance `tap-francetravail` → `target-gcs`. Aucune clé n'est nécessaire : l'authentification GCP passe par l'impersonation de `sa-extract` en local, et par Workload Identity Federation une fois exécuté depuis GitHub Actions.
+
+**Décisions prises en cours de route, documentées dans les choix techniques ci-dessous :** `_raw` stocké en chaîne plutôt qu'en objet imbriqué (contourne un bug de sérialisation du target).
+
 ## Avancement
 
 - [x] Projets GCP dev et prod, bucket de state Terraform (script de bootstrap)
 - [x] Plateforme dev en Terraform (buckets, dataset BigQuery `raw`, service accounts, IAM)
 - [X] Plateforme prod en Terraform
-- [ ] Workload Identity Federation pour GitHub Actions (dev puis prod)
-- [ ] Tap Meltano France Travail (développement)
-- [ ] Extraction France Travail → GCS (Meltano)
+- [x] Workload Identity Federation pour GitHub Actions (dev puis prod)
+- [x] Tap Meltano France Travail (développement)
+- [x] Extraction France Travail → GCS (Meltano), state distant, run.sh
+- [ ] Workflow GitHub Actions planifié (collecte quotidienne)
 - [ ] Chargement BigQuery
 - [ ] Modélisation dbt (staging, marts) et tests
 - [ ] Premier dashboard
@@ -123,7 +145,7 @@ Répéter ensuite pour la prod, en changeant le *quota project* de `gcloud` avan
 
 ```
 infra/          Terraform : bootstrap, modules, envs/ (plateforme) et identity/ (CI), en dev et prod
-extraction/     Projet Meltano et tap France Travail
+extraction/     Projet Meltano, tap France Travail, run.sh (point d'entrée de l'extraction)
 loading/        Chargement GCS → BigQuery
 dbt/            Projet dbt
 oracle/         Migrations, packages PL/SQL, application APEX, données fictives
@@ -147,6 +169,10 @@ oracle/         Migrations, packages PL/SQL, application APEX, données fictives
 | Extraction du domaine informatique, classification en aval | permet de suivre deux profils (Analytics Engineer, PL/SQL) et de changer la définition de « data » sans réextraire | filtre par mots-clés à l'API |
 | Pas de Secret Manager au départ | limiter la surface et les coûts ; les secrets sont dans les GitHub Environments | Secret Manager (à activer si le besoin apparaît) |
 | GitHub Actions planifié avant Airflow | suffisant pour une collecte quotidienne, sans infrastructure | Cloud Composer (coût élevé pour ce volume) |
+| Extraction en full-refresh, sans incrémental | l'API ne signale pas les offres fermées ; seul un instantané complet à chaque run permet à dbt de déduire les fermetures | incrémental sur `dateActualisation` (aurait manqué les fermetures) |
+| `_raw` sérialisé en chaîne JSON dans le tap | contourne un bug du target retenu (`Decimal` non sérialisable par sa bibliothèque JSON) sans en dépendre pour un correctif | forker le target pour corriger sa sérialisation (dette technique sur une dépendance à 2 étoiles, non maintenue) |
+| `run_id` porté à la fois par le chemin GCS et par un champ de chaque enregistrement | traçabilité d'un run même après agrégation ou copie des données, indépendante du nom de fichier | `run_id` uniquement dans le nom de fichier |
+| `run.sh` comme point d'entrée unique de l'extraction | même commande testée en local, appelée par le CI puis plus tard par Airflow, sans dupliquer la logique | commandes Meltano écrites directement dans le YAML du workflow |
 
 **Laissé de côté volontairement :** environnement de recette, orchestrateur managé, GPU cloud, Secret Manager.
 
