@@ -1,0 +1,48 @@
+name: Extraction France Travail
+
+on:
+  schedule:
+    - cron: "0 5 * * *" # 05:00 UTC = 07:00 (été) / 06:00 (hiver) heure de Paris
+  workflow_dispatch: # permet aussi un déclenchement manuel depuis l'onglet Actions
+
+permissions:
+  contents: read
+  id-token: write # requis pour obtenir le jeton OIDC (Workload Identity Federation)
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    environment: prod-collect # limité à sa-extract, sans approbation manuelle
+    defaults:
+      run:
+        working-directory: extraction
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authentification GCP (Workload Identity Federation)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.EXTRACT_SA }}
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installer Meltano (avec support GCS pour le state)
+        run: pip install "meltano[gcs]"
+
+      - name: Installer les plugins Meltano (tap et target)
+        run: meltano --environment=prod install
+        env:
+          TAP_FRANCETRAVAIL_CLIENT_ID: ${{ secrets.TAP_FRANCETRAVAIL_CLIENT_ID }}
+          TAP_FRANCETRAVAIL_CLIENT_SECRET: ${{ secrets.TAP_FRANCETRAVAIL_CLIENT_SECRET }}
+
+      - name: Lancer l'extraction
+        run: ./run.sh prod
+        env:
+          TAP_FRANCETRAVAIL_CLIENT_ID: ${{ secrets.TAP_FRANCETRAVAIL_CLIENT_ID }}
+          TAP_FRANCETRAVAIL_CLIENT_SECRET: ${{ secrets.TAP_FRANCETRAVAIL_CLIENT_SECRET }}
