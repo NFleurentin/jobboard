@@ -22,9 +22,9 @@
         },
         "_raw": {
             "type": [
-                "object"
+                "string"
             ],
-            "description": "Payload"
+            "description": "Payload JSON brut, sérialisé en texte"
         },
         "_extracted_at": {
             "type": [
