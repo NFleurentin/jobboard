@@ -30,7 +30,7 @@ flowchart LR
     API[API France Travail] -->|Meltano<br/>tap custom| RAW[(GCS<br/>JSONL brut)]
     RAW --> LLM[Enrichissement<br/>LLM open source]
     LLM --> ENR[(GCS<br/>JSONL enrichi)]
-    RAW --> BQ[(BigQuery<br/>raw)]
+    RAW --> BQ[(BigQuery<br/>raw.france_travail_offers)]
     ENR --> BQ
     BQ -->|dbt| MARTS[(BigQuery<br/>staging / marts)]
     MARTS --> DASH[Dashboard]
@@ -103,20 +103,35 @@ Un tap Singer développé pour l'API France Travail (authentification OAuth2, pa
 
 **Ce que produit un run :**
 ```
-gs://jobboard-<env>-3b375b-raw/france-travail/offers/ingestion_date=YYYY-MM-DD/run_id=<RUN_ID>/part-<timestamp>.jsonl
+gs://jobboard-<env>-3b375b-raw/france-travail/offers/ingested_at=<INGESTED_AT>/part-<timestamp>.jsonl
 ```
 
-Chaque enregistrement contient `id`, `dateActualisation`, `_raw` (le payload complet de l'offre, sérialisé en JSON texte), `_extracted_at` et `_run_id`.
+Chaque enregistrement contient `id`, `dateActualisation`, `_raw` (le payload complet de l'offre, sérialisé en JSON texte), `_extracted_at` et `_ingested_at`.
 
 **Lancer une extraction :**
 ```bash
-cd extraction
-./run.sh dev    # ou prod
+export MELTANO_ENVIRONMENT=dev   # ou prod
+export GCP_PROJECT_ID="jobboard-${MELTANO_ENVIRONMENT}-3b375b"
+export INGESTED_AT=$(date -u +%Y%m%dT%H%M%SZ)
+
+cd extraction && ./run.sh
 ```
 
-Le script fixe un `run_id`, pointe le state Meltano vers le bucket GCS de l'environnement choisi, puis lance `tap-francetravail` → `target-gcs`. Aucune clé n'est nécessaire : l'authentification GCP passe par l'impersonation de `sa-extract` en local, et par Workload Identity Federation une fois exécuté depuis GitHub Actions.
+`run.sh` pointe le state Meltano vers le bucket GCS de l'environnement choisi, puis lance `tap-francetravail` → `target-gcs`. Aucune clé n'est nécessaire : l'authentification GCP passe par l'impersonation de `sa-extract` en local, et par Workload Identity Federation une fois exécuté depuis GitHub Actions.
 
-**Décisions prises en cours de route, documentées dans les choix techniques ci-dessous :** `_raw` stocké en chaîne plutôt qu'en objet imbriqué (contourne un bug de sérialisation du target).
+**Décisions prises en cours de route, documentées dans les choix techniques ci-dessous :** `_raw` stocké en chaîne plutôt qu'en objet imbriqué (contourne un bug de sérialisation du target), un seul identifiant de run (`INGESTED_AT`) partagé entre extraction et chargement.
+
+## Chargement (GCS → BigQuery)
+
+`loading/load.sh` charge le contenu d'un run vers `raw.france_travail_offers`, en mode `APPEND` (pas de remplacement de partition : plusieurs runs peuvent avoir lieu la même journée), partitionné par jour sur `_ingested_at`. La table est créée automatiquement au premier chargement, à partir du schéma déclaré dans `loading/schemas/`.
+
+```bash
+cd loading && ./load.sh
+```
+
+Lit les mêmes variables d'environnement que l'extraction (`GCP_PROJECT_ID`, `INGESTED_AT`) — aucune ne doit être recalculée séparément, pour garantir que le chemin GCS relu correspond exactement à celui que l'extraction vient d'écrire.
+
+**Pipeline complet, orchestré par un unique workflow GitHub Actions planifié** (`.github/workflows/extraction-france-travail.yml`) : génération des identifiants de run → extraction → chargement, une fois par jour, avec `sa-extract` (droits sur `raw` en GCS et en BigQuery).
 
 ## Avancement
 
@@ -127,7 +142,7 @@ Le script fixe un `run_id`, pointe le state Meltano vers le bucket GCS de l'envi
 - [x] Tap Meltano France Travail (développement)
 - [x] Extraction France Travail → GCS (Meltano), state distant, run.sh
 - [X] Workflow GitHub Actions planifié (collecte quotidienne)
-- [ ] Chargement BigQuery
+- [x] Chargement BigQuery (`raw.france_travail_offers`, mode APPEND, partitionné sur `_ingested_at`)
 - [ ] Modélisation dbt (staging, marts) et tests
 - [ ] Premier dashboard
 - [ ] CI/CD (lint, plan Terraform, dbt sur pull request)
@@ -146,7 +161,7 @@ Le script fixe un `run_id`, pointe le state Meltano vers le bucket GCS de l'envi
 ```
 infra/          Terraform : bootstrap, modules, envs/ (plateforme) et identity/ (CI), en dev et prod
 extraction/     Projet Meltano, tap France Travail, run.sh (point d'entrée de l'extraction)
-loading/        Chargement GCS → BigQuery
+loading/        Chargement GCS → BigQuery (load.sh, schémas)
 dbt/            Projet dbt
 oracle/         Migrations, packages PL/SQL, application APEX, données fictives
 .github/        Workflows CI/CD
@@ -171,8 +186,11 @@ oracle/         Migrations, packages PL/SQL, application APEX, données fictives
 | GitHub Actions planifié avant Airflow | suffisant pour une collecte quotidienne, sans infrastructure | Cloud Composer (coût élevé pour ce volume) |
 | Extraction en full-refresh, sans incrémental | l'API ne signale pas les offres fermées ; seul un instantané complet à chaque run permet à dbt de déduire les fermetures | incrémental sur `dateActualisation` (aurait manqué les fermetures) |
 | `_raw` sérialisé en chaîne JSON dans le tap | contourne un bug du target retenu (`Decimal` non sérialisable par sa bibliothèque JSON) sans en dépendre pour un correctif | forker le target pour corriger sa sérialisation (dette technique sur une dépendance à 2 étoiles, non maintenue) |
-| `run_id` porté à la fois par le chemin GCS et par un champ de chaque enregistrement | traçabilité d'un run même après agrégation ou copie des données, indépendante du nom de fichier | `run_id` uniquement dans le nom de fichier |
-| `run.sh` comme point d'entrée unique de l'extraction | même commande testée en local, appelée par le CI puis plus tard par Airflow, sans dupliquer la logique | commandes Meltano écrites directement dans le YAML du workflow |
+| Un seul identifiant de run (`INGESTED_AT`), généré une fois par l'appelant, partagé entre extraction et chargement | élimine tout risque de divergence entre le chemin GCS écrit et celui relu (notamment autour de minuit) ; `run.sh` et `load.sh` valident sa présence plutôt que de le recalculer | `run_id` et date calculés séparément dans chaque script |
+| `run.sh` et `load.sh` comme points d'entrée uniques | même commande testée en local, appelée par le CI puis plus tard par Airflow, sans dupliquer la logique | commandes Meltano/bq écrites directement dans le YAML du workflow |
+| `_raw` chargé en `STRING`, `PARSE_JSON` réservé à la couche staging dbt | BigQuery ne convertit pas une chaîne JSON-encodée en type `JSON` structuré au chargement ; garder `_raw` en chaîne évite de réintroduire le bug de sérialisation `Decimal` | déclarer `_raw` en type `JSON` (aucun gain sans objet non échappé en source) |
+| Chargement en mode `APPEND`, dédoublonnage laissé à dbt | plusieurs runs peuvent avoir lieu la même journée ; un remplacement de partition aurait écrasé les runs précédents du même jour | `--replace` sur la partition du jour (idempotent par jour, mais pas par run) |
+| `sa-extract` gère aussi le chargement BigQuery | droits déjà accordés sur `raw` dès la mise en place de la plateforme ; ce compte est responsable de toute la zone d'atterrissage, pas seulement du fichier GCS | un service account de chargement séparé |
 
 **Laissé de côté volontairement :** environnement de recette, orchestrateur managé, GPU cloud, Secret Manager.
 
