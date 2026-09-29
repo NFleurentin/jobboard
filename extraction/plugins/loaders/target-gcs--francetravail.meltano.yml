@@ -4,4 +4,4 @@ plugins:
       inherit_from: target-gcs
       config:
         key_prefix: france-travail/
-        key_naming_convention: "{stream}/ingestion_date={date}/run_id=${MELTANO_JOB_RUN_ID}/part-{timestamp}.jsonl"
+        key_naming_convention: "{stream}/ingested_at=${INGESTED_AT}/part-{timestamp}.jsonl"
