@@ -1,0 +1,47 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": [
+                "string"
+            ],
+            "description": "Identifiant unique de l'offre",
+            "examples": [
+                "048KLTP"
+            ]
+        },
+        "dateActualisation": {
+            "type": [
+                "string"
+            ],
+            "format": "date-time",
+            "description": "Date de dernière actualisation de l'offre",
+            "examples": [
+                "2023-03-20T15:45:00Z"
+            ]
+        },
+        "_raw": {
+            "type": [
+                "string"
+            ],
+            "description": "Payload JSON brut, sérialisé en texte"
+        },
+        "_extracted_at": {
+            "type": [
+                "string"
+            ],
+            "format": "date-time",
+            "description": "Date d'extraction de l'offre",
+            "examples": [
+                "2023-03-20T15:45:00Z"
+            ]
+        },
+        "_run_id": {
+            "description": "Identifiant du run d'extraction",
+            "type": [
+                "string",
+                "null"
+            ]
+        }
+    }
+}

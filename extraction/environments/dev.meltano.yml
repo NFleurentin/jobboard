@@ -1,0 +1,15 @@
+environments:
+  - name: dev
+    config:
+      plugins:
+        extractors:
+          - name: tap-francetravail
+            config:
+              search_queries:
+                - keywords: sql
+                - keywords: analytics engineer
+
+        loaders:
+          - name: target-gcs--francetravail
+            config:
+              bucket_name: jobboard-dev-3b375b-raw

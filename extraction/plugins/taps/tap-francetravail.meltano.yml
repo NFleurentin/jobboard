@@ -1,0 +1,14 @@
+plugins:
+  extractors:
+  - name: tap-francetravail
+    namespace: tap_francetravail
+    pip_url: -e ./taps/tap-francetravail
+    executable: tap-francetravail
+    capabilities:
+    - catalog
+    - discover
+    settings:
+    - name: client_id
+    - name: client_secret
+      sensitive: true
+    - name: search_queries

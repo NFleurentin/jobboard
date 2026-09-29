@@ -76,6 +76,12 @@ resource "google_storage_bucket_iam_member" "extract_raw_read" {
   member = "serviceAccount:${google_service_account.extract.email}"
 }
 
+resource "google_storage_bucket_iam_member" "extract_raw_legacy_reader" {
+  bucket = google_storage_bucket.raw.name
+  role   = "roles/storage.legacyBucketReader"   # storage.buckets.get, storage.buckets.list
+  member = "serviceAccount:${google_service_account.extract.email}"
+}
+
 resource "google_storage_bucket_iam_member" "extract_state" {
   bucket = google_storage_bucket.meltano_state.name
   role   = "roles/storage.objectAdmin"
