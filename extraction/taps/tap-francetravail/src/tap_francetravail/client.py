@@ -107,7 +107,7 @@ class FranceTravailStream(RESTStream):
                 "dateActualisation": record.get("dateActualisation"),
                 "_raw": json.dumps(record, ensure_ascii=False),  # payload brut complet
                 "_extracted_at": datetime.now(UTC).isoformat(),  # date d'extraction
-                "_run_id": os.environ.get("MELTANO_JOB_RUN_ID")
+                "_ingested_at": os.environ.get("INGESTED_AT")
             }
 
             yield minimal_record

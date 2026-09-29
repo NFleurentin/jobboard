@@ -36,8 +36,8 @@
                 "2023-03-20T15:45:00Z"
             ]
         },
-        "_run_id": {
-            "description": "Identifiant du run d'extraction",
+        "_ingested_at": {
+            "description": "Date d'ingestion de l'offre",
             "type": [
                 "string",
                 "null"
