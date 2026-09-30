@@ -6,10 +6,14 @@ profile: "jobboard"
 
 model-paths: ["models"]
 macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
 
 clean-targets:
   - "target"
   - "dbt_packages"
+
+vars:
+  france_travail_offers_snapshot_name: 'snap_france_travail__offers'   # identifiant utilisé dans meta.state_snapshot
 
 models:
   jobboard:
