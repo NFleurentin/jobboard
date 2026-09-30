@@ -1,0 +1,19 @@
+name: "jobboard"
+version: "1.0.0"
+config-version: 2
+
+profile: "jobboard"
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  jobboard:
+    +static_analysis: strict
+    staging:
+      +schema: staging
+      +materialized: view

@@ -1,0 +1,15 @@
+# Artefacts de compilation et d'exécution dbt
+target/
+dbt_packages/
+dbt_modules/          # ancien nom de dbt_packages, versions plus anciennes
+logs/
+ 
+# Préférences locales, jamais à versionner
+.user.yml
+ 
+# Environnement local (identifiants, variables), si utilisé
+.env
+ 
+# Éditeurs / OS
+.DS_Store
+ 

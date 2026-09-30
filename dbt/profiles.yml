@@ -1,0 +1,31 @@
+jobboard:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: oauth
+      project: "{{ env_var('GCP_PROJECT_ID') }}"
+      dataset: analytics
+      location: europe-west1
+      threads: 4
+      maximum_bytes_billed: 10000000000
+      impersonate_service_account: "sa-dbt@{{ env_var('GCP_PROJECT_ID') }}.iam.gserviceaccount.com"
+
+    ci:
+      type: bigquery
+      method: oauth
+      project: "{{ env_var('GCP_PROJECT_ID') }}"
+      dataset: "pr_{{ env_var('PR_NUMBER', '0') }}"
+      location: europe-west1
+      threads: 4
+      maximum_bytes_billed: 10000000000
+      impersonate_service_account: "sa-dbt@{{ env_var('GCP_PROJECT_ID') }}.iam.gserviceaccount.com"
+
+    prod:
+      type: bigquery
+      method: oauth
+      project: "{{ env_var('GCP_PROJECT_ID') }}"
+      dataset: analytics
+      location: europe-west1
+      threads: 8
+      impersonate_service_account: "sa-dbt@{{ env_var('GCP_PROJECT_ID') }}.iam.gserviceaccount.com"
