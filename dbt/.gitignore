@@ -13,3 +13,4 @@ logs/
 # Éditeurs / OS
 .DS_Store
  
+dbt_internal_packages/
