@@ -17,29 +17,29 @@
 
 {{ config(materialized='ephemeral') }}
 
-with source as (
+WITH source AS (
 
-    select * from {{ source('raw', 'france_travail_offers') }}
-    where _ingested_at = {{ target_ingested_at_france_travail_offers() }}
+    SELECT * FROM {{ source('raw', 'france_travail_offers') }}
+    WHERE _ingested_at = {{ target_ingested_at_france_travail_offers() }}
 
 ),
 
-deduplicated as (
+deduplicated AS (
 
-    select *
-    from source
-    qualify row_number() over (
-        partition by id
-        order by _extracted_at desc
+    SELECT *
+    FROM source
+    QUALIFY row_number() OVER (
+        PARTITION BY id
+        ORDER BY _extracted_at DESC
     ) = 1
 
 )
 
-select
-    id as offer_id,
-    dateActualisation as updated_at,
-    _raw as _raw,
-    _extracted_at as _extracted_at,
-    _ingested_at as _ingested_at
+SELECT
+    id AS offer_id,
+    dateactualisation AS updated_at,
+    _raw,
+    _extracted_at,
+    _ingested_at
 
-from deduplicated
+FROM deduplicated

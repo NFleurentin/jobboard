@@ -15,7 +15,7 @@
     )
 }}
 
-with spine as (
+WITH spine AS (
 
     {% if is_incremental() %}
 
@@ -37,10 +37,10 @@ with spine as (
 
 ),
 
-dates as (
+dates AS (
 
-    select cast(date_day as date) as date_day
-    from spine
+    SELECT CAST(date_day AS DATE) AS date_day
+    FROM spine
 
     -- Garde-fou, désormais redondant en temps normal puisque start_date
     -- borne déjà la plage côté date_spine — gardé par prudence (coût nul).
@@ -49,22 +49,22 @@ dates as (
     {% endif %}
 )
 
-select
+SELECT
     date_day,
-    extract(year from date_day) as year,
-    extract(quarter from date_day) as quarter,
-    extract(month from date_day) as month,
-    format_date('%Y-%m', date_day) as year_month,
+    EXTRACT(YEAR FROM date_day) AS year,
+    EXTRACT(QUARTER FROM date_day) AS quarter,
+    EXTRACT(MONTH FROM date_day) AS month,
+    format_date('%Y-%m', date_day) AS year_month,
     [
         'janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet',
         'août', 'septembre', 'octobre', 'novembre', 'décembre'
-    ][offset(extract(month from date_day) - 1)] as month_name,
-    extract(isoyear from date_day) as iso_year,
-    extract(isoweek from date_day) as iso_week,
+    ][offset(EXTRACT(MONTH FROM date_day) - 1)] AS month_name,
+    EXTRACT(ISOYEAR FROM date_day) AS iso_year,
+    EXTRACT(ISOWEEK FROM date_day) AS iso_week,
     -- dayofweek BigQuery : 1 = dimanche. Converti en ISO : 1 = lundi.
-    mod(extract(dayofweek from date_day) + 5, 7) + 1 as day_of_week,
+    mod(EXTRACT(DAYOFWEEK FROM date_day) + 5, 7) + 1 AS day_of_week,
     [
         'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'
-    ][offset(mod(extract(dayofweek from date_day) + 5, 7))] as day_name,
-    extract(dayofweek from date_day) in (1, 7) as is_weekend
-from dates
+    ][offset(mod(EXTRACT(DAYOFWEEK FROM date_day) + 5, 7))] AS day_name,
+    EXTRACT(DAYOFWEEK FROM date_day) IN (1, 7) AS is_weekend
+FROM dates

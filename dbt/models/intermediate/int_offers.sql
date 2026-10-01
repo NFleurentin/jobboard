@@ -7,9 +7,9 @@
 -- utiles pour un rapport de marché) et les champs composites JSON bruts
 -- (à réintroduire via des tables de pont dédiées si besoin, plus tard).
 
-with france_travail as (
+WITH france_travail AS (
 
-    select
+    SELECT
         -- Clé de substitution faite main (plutôt que
         -- dbt_utils.generate_surrogate_key : son dispatch vers
         -- l'implémentation BigQuery échoue sous Fusion au moment de
@@ -17,11 +17,11 @@ with france_travail as (
         -- si offer_id était un jour NULL, la clé ne devient pas NULL
         -- silencieusement.
         to_hex(md5(
-            coalesce(cast('{{ var("france_travail_source_name") }}' as string), '') || '-' ||
-            coalesce(cast(offer_id as string), '')
-        )) as offer_key,
-        '{{ var("france_travail_source_name") }}' as source,
-        offer_id as source_offer_id,
+            COALESCE(CAST('{{ var("france_travail_source_name") }}' AS STRING), '') || '-'
+            || COALESCE(CAST(offer_id AS STRING), '')
+        )) AS offer_key,
+        '{{ var("france_travail_source_name") }}' AS source,
+        offer_id AS source_offer_id,
 
         created_at,
         updated_at,
@@ -50,7 +50,7 @@ with france_travail as (
         company_size_label,
 
         contract_type_code,
-        contract_type_label_clean as contract_type_label,
+        contract_type_label_clean AS contract_type_label,
         contract_duration_value,
         contract_duration_unit,
         contract_nature,
@@ -83,23 +83,23 @@ with france_travail as (
         _valid_from,
         _valid_to
 
-    from {{ ref('stg_france_travail__offers') }}
+    FROM {{ ref('stg_france_travail__offers') }}
 
 ),
 
-unioned as (
+unioned AS (
 
     -- Pas d'UNION ALL utile pour l'instant (une seule source) : ce CTE
     -- existe déjà pour qu'ajouter une deuxième source se résume à un
     -- "union all select * from <nouvelle_source>" ici, sans rien
     -- restructurer ailleurs dans le fichier.
-    select * from france_travail
+    SELECT * FROM france_travail
 
 ),
 
-final as (
+final AS (
 
-    select
+    SELECT
         offer_key,
         source,
         source_offer_id,
@@ -164,8 +164,8 @@ final as (
         _valid_from,
         _valid_to
 
-    from unioned
+    FROM unioned
 
 )
 
-select * from final
+SELECT * FROM final

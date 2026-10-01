@@ -1,0 +1,12 @@
+{
+    "editor.formatOnSave": false,
+    "emeraldwalk.runonsave": {
+        "commands": [
+            {
+                "match": "dbt/models/.*\\.sql$",
+                "cmd": "GCP_PROJECT_ID=jobboard-dev-3b375b dbt format -s ${fileBasenameNoExt} --project-dir ${workspaceFolder}/dbt --profiles-dir ${workspaceFolder}/dbt && GCP_PROJECT_ID=jobboard-dev-3b375b dbt lint -s ${fileBasenameNoExt} --project-dir ${workspaceFolder}/dbt --profiles-dir ${workspaceFolder}/dbt --fix",
+                "isAsync": false
+            }
+        ]
+    }
+}

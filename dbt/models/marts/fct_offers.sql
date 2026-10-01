@@ -14,51 +14,53 @@
     )
 }}
 
-with source as (
+WITH source AS (
 
-    select * from {{ ref('int_offers') }}
+    SELECT * FROM {{ ref('int_offers') }}
 
 ),
 
-filtered as (
+filtered AS (
 
     {% if is_incremental() %}
 
-    select * from source
-    where _valid_from > (
-        select coalesce(max(_valid_from), timestamp('1970-01-01')) from {{ this }}
-    )
+        selecT * from source
+        where
+            _valid_from > (
+                select coalesce(max(_valid_from), timestamp('1970-01-01')) from {{ this }}
+            )
 
-    union distinct
+        union distinct
 
-    select * from source
-    where _valid_to > (
-        select coalesce(max(_valid_to), timestamp('1970-01-01'))
-        from {{ this }}
-        where _valid_to is not null
-    )
+        select * from source
+        where _valid_to > (
+            select coalesce(max(_valid_to), timestamp('1970-01-01'))
+            from {{ this }}
+            where _valid_to is not null
+        )
 
     {% else %}
 
-    select * from source
+        select * from source
 
     {% endif %}
 
 ),
 
-final as (
+final AS (
 
-    select
+    SELECT
         *,
 
         -- Clés de date, pour jointure directe avec dim_date.
-        date(created_at) as created_date,
-        date(updated_at) as updated_date,
-        date(_valid_from) as valid_from_date,
-        date(_valid_to) as valid_to_date
+        date(created_at) AS created_date,
+        date(updated_at) AS updated_date,
+        date(_valid_from) AS valid_from_date,
+        date(_valid_to) AS valid_to_date
 
-    from filtered
+    FROM filtered
 
 )
 
-select * from final
+SELECT *
+FROM final
