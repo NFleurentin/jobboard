@@ -1,0 +1,196 @@
+version: 2
+
+models:
+  - name: eph_france_travail__offers
+    description: >
+      Modèle éphémère, seul point de contact avec la source raw. Filtre sur
+      le jour ciblé (macro target_ingested_at_france_travail_offers),
+      dédoublonne. Aucun nettoyage de champ ici — voir
+      stg_france_travail__offers.
+    columns:
+      - name: offer_id
+        data_tests:
+          - not_null
+      - name: raw_json_text
+        data_tests:
+          - not_null
+      - name: updated_at_source
+        data_tests:
+          - not_null
+      - name: ingested_at
+        data_tests:
+          - not_null
+
+  - name: stg_france_travail__offers
+    description: >
+      Champs métier extraits depuis snap_france_travail__offers, typés et
+      renommés. Incrémental (deux marqueurs, dbt_valid_from/dbt_valid_to —
+      voir commentaire en tête du fichier SQL pour le raisonnement complet).
+      raw_json n'est pas exposé en sortie : disponible une couche plus haut
+      (snap_france_travail__offers._raw) via PARSE_JSON si besoin ponctuel.
+      Structuré en CTE successives (extracted / derived / cleaned / final) :
+      extraction brute, dérivation de champs composites (localisation,
+      contrat, horaires, salaire), standardisation de casse, puis sélection
+      finale dans un ordre de lecture pensé pour l'inspection manuelle.
+    columns:
+      - name: offer_id
+        description: "Identifiant France Travail de l'offre."
+        data_tests:
+          - not_null
+
+      # Dates
+      - name: created_at
+        description: "Date de création de l'offre côté source."
+      - name: updated_at
+        description: "Date de dernière actualisation côté source (dateActualisation)."
+        data_tests:
+          - not_null
+
+      # Contenu
+      - name: title
+        description: "Intitulé de l'offre."
+      - name: description
+        description: "Description complète de l'offre."
+
+      # Entreprise
+      - name: company_name
+        description: "Nom de l'entreprise, casse standardisée (INITCAP). Peut dénaturer des sigles (ex. SNCF -> Sncf) : compromis accepté."
+      - name: company_description
+        description: "Description de l'entreprise."
+      - name: company_url
+        description: "Site web de l'entreprise."
+      - name: company_logo
+        description: "URL du logo de l'entreprise."
+      - name: company_is_adapted
+        description: "Entreprise adaptée (emploi de travailleurs handicapés)."
+
+      # Localisation
+      - name: work_location_label
+        description: "Libellé brut du lieu de travail (ex. '77 - Chessy')."
+      - name: work_location_city
+        description: "Ville, extraite de work_location_label et standardisée en casse (INITCAP). NULL si le format ne correspond pas au motif département - ville (ex. offres hors France)."
+      - name: work_location_department_code
+        description: "Code département, extrait de work_location_label (gère le cas particulier de la Corse : 2A/2B). NULL si hors motif."
+      - name: work_location_postal_code
+        description: "Code postal du lieu de travail."
+      - name: work_location_commune_code
+        description: "Code commune INSEE du lieu de travail."
+      - name: work_location_latitude
+      - name: work_location_longitude
+
+      # Métier / classification
+      - name: rome_code
+        description: "Code ROME du métier."
+      - name: rome_label
+      - name: appellation_label
+        description: "Appellation précise du poste."
+      - name: naf_code
+        description: "Code NAF de l'entreprise."
+      - name: sector_code
+      - name: sector_label
+      - name: company_size_label
+        description: "Tranche d'effectif de l'établissement."
+
+      # Contrat
+      - name: contract_type_code
+        description: "Code du type de contrat (ex. CDI, CDD)."
+      - name: contract_type_label
+        description: "Libellé brut du type de contrat, peut inclure une durée (ex. 'Intérim - 1 Mois')."
+      - name: contract_type_label_clean
+        description: "Type de contrat seul, sans la durée (ex. 'Intérim')."
+      - name: contract_duration_value
+        description: "Valeur numérique de la durée du contrat, si présente dans contract_type_label (ex. 1)."
+      - name: contract_duration_unit
+        description: "Unité de la durée, telle qu'extraite (pas supposée fixe — à vérifier si d'autres valeurs que 'Mois' apparaissent)."
+      - name: contract_nature
+      - name: working_time_detail_label
+        description: "Libellé brut du temps de travail, souvent sur deux lignes (heures + type d'horaire)."
+      - name: working_hours_min
+        description: "Nombre d'heures (ou borne basse d'une fourchette), extrait de working_time_detail_label."
+      - name: working_hours_max
+        description: "Borne haute d'une éventuelle fourchette d'heures. NULL si valeur unique (cas observé le plus fréquent)."
+      - name: working_hours_periodicity
+        description: "Périodicité des heures (ex. 'semaine'), telle qu'extraite — pas supposée fixe."
+      - name: working_schedule_type
+        description: "Type d'horaire (ex. 'Travail en journée'), extrait de la ligne restante de working_time_detail_label."
+      - name: working_time_label
+        description: "Libellé synthétique du temps de travail (ex. 'Temps plein')."
+      - name: position_count
+        description: "Nombre de postes proposés par l'offre."
+      - name: is_apprenticeship
+        description: "Offre en alternance."
+
+      # Expérience / qualification
+      - name: experience_required_code
+      - name: experience_label
+      - name: experience_comment
+      - name: qualification_code
+      - name: qualification_label
+
+      # Salaire
+      - name: salary_label
+        description: "Libellé brut du salaire, en texte libre."
+      - name: salary_periodicity
+        description: "Périodicité du salaire (Annuel, Mensuel, Horaire...), telle qu'extraite de salary_label."
+      - name: salary_min
+        description: "Montant minimum, dans l'unité de salary_periodicity (pas convertie en mensuel — la conversion suppose un nombre d'heures/semaine pour l'horaire, une vraie hypothèse laissée à un modèle en aval)."
+      - name: salary_max
+        description: "Montant maximum. NULL si salary_label ne donne qu'une valeur unique (ex. taux horaire seul)."
+      - name: salary_comment
+      - name: salary_complement_1
+      - name: salary_complement_2
+
+      # Divers
+      - name: travel_code
+      - name: travel_label
+      - name: exercise_complement
+      - name: working_conditions
+      - name: is_disability_accessible
+      - name: offer_is_adapted
+      - name: employer_disability_committed
+      - name: lacks_candidates
+
+      # Origine / lien
+      - name: source_origin_code
+      - name: source_url
+
+      # Contact — donnée personnelle (voir README : décision explicite de
+      # la conserver pour usage personnel, masquage prévu via policy tags
+      # BigQuery pour toute consultation publique/démo).
+      - name: contact_name
+        description: "Peut contenir le nom d'un recruteur individuel, publié par France Travail. Donnée personnelle."
+      - name: contact_email
+      - name: contact_phone
+      - name: contact_comment
+      - name: contact_address_1
+      - name: contact_address_2
+      - name: contact_address_3
+      - name: contact_recruiter_url
+      - name: contact_application_url
+      - name: agency_phone
+      - name: agency_email
+
+      # Champs composites, laissés en JSON brut (structure variable)
+      - name: competences_json
+      - name: formations_json
+      - name: langues_json
+      - name: permis_json
+      - name: office_tools_json
+      - name: working_conditions_json
+      - name: qualites_professionnelles_json
+      - name: salary_complements_json
+      - name: source_origin_partners_json
+
+      # Métadonnées techniques
+      - name: _extracted_at
+        data_tests:
+          - not_null
+      - name: _ingested_at
+        data_tests:
+          - not_null
+      - name: _valid_from
+        description: "Début de validité de cette version (snapshot SCD2)."
+        data_tests:
+          - not_null
+      - name: _valid_to
+        description: "Fin de validité de cette version (NULL si toujours active)."
