@@ -1,0 +1,84 @@
+[sqlfluff]
+# Dialecte SQL cible
+dialect = bigquery
+
+# Templater : nécessaire pour que sqlfluff comprenne le Jinja/dbt ({{ ref(...) }}, {{ source(...) }}, etc.)
+templater = dbt
+
+# Longueur de ligne max avant de forcer un retour à la ligne
+max_line_length = 100
+
+# Largeur d'indentation en espaces
+indent_unit = space
+tab_space_size = 4
+
+# Règles à exclure globalement (ajuste selon tes préférences d'équipe)
+exclude_rules = ambiguous.column_references, structure.column_order
+
+[sqlfluff:templater:dbt]
+project_dir = ./
+profiles_dir = ./
+target = dev
+
+# ---------------------------------------------------------------------
+# Règles de layout (LT*) — celles utilisées par `dbt format` / `dbt lint`
+# ---------------------------------------------------------------------
+
+[sqlfluff:layout:type:comma]
+line_position = trailing
+
+[sqlfluff:rules:layout.indent]
+indent_unit = space
+
+# ---------------------------------------------------------------------
+# Conventions de casse (CP*)
+# ---------------------------------------------------------------------
+
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.identifiers]
+capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.functions]
+capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.literals]
+capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.types]
+capitalisation_policy = upper
+
+# ---------------------------------------------------------------------
+# Conventions de nommage et de références (RF*)
+# ---------------------------------------------------------------------
+
+# Interdit le quoting inutile des identifiants (correspond à ce qu'on a vu : RF06)
+[sqlfluff:rules:references.quoting]
+prefer_quoted_identifiers = false
+
+# Force la qualification des colonnes dans les jointures multi-tables
+[sqlfluff:rules:references.qualification]
+single_table_references = unqualified
+
+# ---------------------------------------------------------------------
+# Conventions structurelles (ST*)
+# ---------------------------------------------------------------------
+
+# Recommande les CTEs plutôt que les sous-requêtes imbriquées
+[sqlfluff:rules:structure.subquery]
+forbid_subquery_in = join
+
+# ---------------------------------------------------------------------
+# Convention d'alias (AL*)
+# ---------------------------------------------------------------------
+
+[sqlfluff:rules:aliasing.table]
+aliasing = explicit
+
+[sqlfluff:rules:aliasing.column]
+aliasing = explicit
+
+# Longueur minimale avant d'exiger un alias explicite sur les tables
+[sqlfluff:rules:aliasing.length]
+min_alias_length = 3

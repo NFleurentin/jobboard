@@ -1,0 +1,39 @@
+version: 2
+
+sources:
+  - name: raw
+    database: "{{ target.project }}"
+    schema: raw
+    tables:
+      - name: france_travail_offers
+        description: "Donnée brute des offres France Travail, tel que déposé par Meltano (target-gcs). Un enregistrement par offre et par run d'extraction (full-refresh quotidien)."
+        config:
+          loaded_at_field: _ingested_at
+          freshness:
+            warn_after: { count: 36, period: hour }
+            error_after: { count: 72, period: hour }
+        columns:
+          - name: id
+            description: "Identifiant de l'offre côté France Travail."
+            data_tests:
+              - not_null
+
+          - name: dateActualisation
+            description: "Date de dernière actualisation de l'offre, telle que renvoyée par l'API."
+            data_tests:
+              - not_null
+
+          - name: _raw
+            description: "Payload JSON complet de l'offre, sérialisé en texte (voir choix techniques : contourne un bug de sérialisation Decimal/orjson du target)."
+            data_tests:
+              - not_null
+
+          - name: _extracted_at
+            description: "Horodatage précis auquel le tap a récupéré cet enregistrement depuis l'API, à la ligne près."
+            data_tests:
+              - not_null
+
+          - name: _ingested_at
+            description: "Identifiant du run d'extraction/chargement (une seule valeur par run, partagée par toutes ses lignes). Utilisé pour le partitionnement et le dédoublonnage en staging."
+            data_tests:
+              - not_null

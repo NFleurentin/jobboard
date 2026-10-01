@@ -40,11 +40,28 @@ resource "google_storage_bucket" "meltano_state" {
 }
 
 # ---------- BigQuery ----------
-# Seul "raw" est géré ici. dbt crée lui-même ses datasets (staging, marts, dbt_<user>, pr_<n>).
+
 resource "google_bigquery_dataset" "raw" {
   dataset_id                 = "raw"
   location                   = var.location
   delete_contents_on_destroy = var.env == "dev"
+}
+
+resource "google_bigquery_dataset" "meta" {
+  dataset_id = "meta"
+  location   = var.location
+}
+
+resource "google_bigquery_table" "state_snapshot" {
+  dataset_id = google_bigquery_dataset.meta.dataset_id
+  table_id   = "state_snapshot"
+
+  schema = jsonencode([
+    { name = "name", type = "STRING", mode = "REQUIRED" },
+    { name = "last_ingest", type = "TIMESTAMP", mode = "REQUIRED" },
+  ])
+
+  deletion_protection = false
 }
 
 # ---------- Service accounts ----------

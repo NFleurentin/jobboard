@@ -1,0 +1,75 @@
+version: 2
+
+models:
+  - name: fct_offers
+    description: >
+      Table de faits : une ligne par offre et par version (grain hérité du
+      snapshot). Incrémental, repose sur int_offers pour rester valable si
+      une deuxième source est ajoutée. Dimensions dégénérées pour
+      l'instant (rome_code, work_location_city...) : à remplacer par des
+      clés étrangères au fur et à mesure que de vraies tables de dimension
+      sont construites.
+    columns:
+      - name: offer_key
+        description: "Pas unique seule sur cette table : la clé unique réelle est (offer_key, _valid_from)."
+        data_tests:
+          - not_null
+      - name: _valid_from
+        data_tests:
+          - not_null
+      - name: _valid_to
+      - name: created_date
+        description: "DATE(created_at), pour jointure avec dim_date."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_day
+      - name: updated_date
+        description: "DATE(updated_at), pour jointure avec dim_date."
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_day
+      - name: valid_from_date
+        description: "DATE(_valid_from), pour jointure avec dim_date."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_day
+      - name: valid_to_date
+        description: "DATE(_valid_to), NULL si l'offre est toujours active. Pour jointure avec dim_date."
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_day
+
+  - name: dim_date
+    description: >
+      Dimension calendrier, indépendante des offres. Incrémental (une date
+      calculée ne change jamais), avec start_date dynamique pour que
+      date_spine() ne génère que les jours réellement manquants à chaque
+      run plutôt que toute la plage.
+    columns:
+      - name: date_day
+        data_tests:
+          - not_null
+          - unique
+      - name: year
+        data_tests:
+          - not_null
+      - name: quarter
+      - name: month
+      - name: year_month
+      - name: month_name
+      - name: iso_year
+      - name: iso_week
+      - name: day_of_week
+        description: "1 = lundi ... 7 = dimanche (convention ISO, convertie depuis BigQuery où 1 = dimanche)."
+      - name: day_name
+      - name: is_weekend
