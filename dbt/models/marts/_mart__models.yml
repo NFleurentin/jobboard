@@ -1,7 +1,7 @@
 version: 2
 
 models:
-  - name: fct_offres
+  - name: fct_offers
     description: >
       Table de faits : une ligne par offre et par version (grain hérité du
       snapshot). Incrémental, repose sur int_offers pour rester valable si
