@@ -1,0 +1,34 @@
+version: 2
+
+models:
+  - name: int_offers
+    description: >
+      Regroupe les offres de toutes les sources d'extraction dans un
+      schéma commun (une seule source, france_travail, pour l'instant).
+      Même grain que stg_france_travail__offers : une ligne par offre et
+      par version. Pas de nouveau nettoyage de valeurs ici (déjà fait en
+      staging) ; ce modèle mappe vers des noms de colonnes indépendants de
+      la source, et calcule offer_key, une clé stable même si deux sources
+      réutilisaient un jour le même format d'identifiant brut.
+    columns:
+      - name: offer_key
+        description: "Clé de substitution (hash de source + source_offer_id). Pas unique seule sur cette table : se répète à chaque nouvelle version d'une même offre. La clé unique réelle est (offer_key, _valid_from)."
+        data_tests:
+          - not_null
+      - name: source
+        description: "Site source de l'offre."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["france_travail"]
+              config:
+                severity: warn   # à retirer ou étendre dès qu'une deuxième source est ajoutée
+      - name: source_offer_id
+        description: "Identifiant de l'offre tel que fourni par la source d'origine."
+        data_tests:
+          - not_null
+      - name: _valid_from
+        data_tests:
+          - not_null
+      - name: _valid_to
