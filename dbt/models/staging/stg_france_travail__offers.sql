@@ -77,7 +77,7 @@ extracted as (
     select
         offer_id,
 
-        json_value(raw_json, '$.dateCreation') as created_at,
+        safe_cast(json_value(raw_json, '$.dateCreation') as timestamp) as created_at,
         updated_at,
 
         -- Contenu de l'offre
