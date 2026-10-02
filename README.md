@@ -42,7 +42,7 @@ flowchart LR
 - **Le brut est immuable** : chaque exécution écrit dans un nouveau chemin, ce qui permet de rejouer n'importe quelle étape.
 - **BigQuery est la source analytique, Oracle est propriétaire des corrections humaines et du suivi de candidatures.** Un seul système de vérité par type de donnée.
 - **Deux environnements isolés** (dev et prod), un projet GCP chacun, mêmes définitions de code, configuration différente.
-- **Rien de sensible dans le dépôt ni dans BigQuery** : les données personnelles des recruteurs sont masquées dès l'extraction, et mes contacts et notes restent dans Oracle.
+- **Rien de sensible dans le dépôt, données personnelles cantonnées** : les coordonnées de contact publiées par France Travail (nom de recruteur, e-mail, téléphone) sont conservées dans le brut et extraites en staging pour mon usage personnel, mais exclues dès la couche intermédiaire, donc des marts et de toute vue publique ; mes propres contacts et notes restent dans Oracle.
 
 ## Stack technique
 
@@ -143,7 +143,7 @@ Lit les mêmes variables d'environnement que l'extraction (`GCP_PROJECT_ID`, `IN
 - [x] Extraction France Travail → GCS (Meltano), state distant, run.sh
 - [X] Workflow GitHub Actions planifié (collecte quotidienne)
 - [x] Chargement BigQuery (`raw.france_travail_offers`, mode APPEND, partitionné sur `_ingested_at`)
-- [ ] Modélisation dbt (staging, marts) et tests
+- [ ] Modélisation dbt (staging, marts) et tests *(en cours : snapshot SCD2, staging, `int_offers`, `fct_offers`, `dim_date`)*
 - [ ] Premier dashboard
 - [ ] CI/CD (lint, plan Terraform, dbt sur pull request)
 - [ ] Score de pertinence par règles
@@ -162,8 +162,10 @@ Lit les mêmes variables d'environnement que l'extraction (`GCP_PROJECT_ID`, `IN
 infra/          Terraform : bootstrap, modules, envs/ (plateforme) et identity/ (CI), en dev et prod
 extraction/     Projet Meltano, tap France Travail, run.sh (point d'entrée de l'extraction)
 loading/        Chargement GCS → BigQuery (load.sh, schémas)
-dbt/            Projet dbt
-oracle/         Migrations, packages PL/SQL, application APEX, données fictives
+dbt/            Projet dbt (snapshot, staging, intermediate, marts)
+enrichment/     Enrichissement LLM (à venir)
+oracle/         Migrations, packages PL/SQL, application APEX, données fictives (à venir)
+orchestration/  Orchestration Airflow (à venir)
 .github/        Workflows CI/CD
 ```
 
@@ -176,12 +178,12 @@ oracle/         Migrations, packages PL/SQL, application APEX, données fictives
 | Identifiants de projet avec suffixe aléatoire | unicité mondiale exigée par GCP, sans information personnelle | un suffixe lié à mon identité |
 | Région unique `europe-west1` | dans l'UE, coût inférieur à la multi-région et à Paris | multi-région `EU`, région américaine (quota gratuit GCS plus large mais moins cohérent avec le RGPD) |
 | Terraform avec state distant dans GCS | état partagé entre mon poste et la CI | state local |
-| Bucket de state sans versioning | fichier de quelques Ko, choix assumé pour un projet personnel (activable plus tard) | versioning activé, filet de sécurité peu coûteux |
+| Bucket de state versionné (activé par `bootstrap.sh`) | filet de sécurité quasi gratuit pour un fichier de quelques Ko : un state corrompu ou écrasé se restaure | bucket sans versioning |
 | `identity/` séparé de `envs/` | la CI ne peut pas modifier sa propre porte d'entrée, et détruire le dev n'entraîne pas la perte du pool WIF | tout dans un seul state |
 | Impersonation et Workload Identity Federation | aucune clé JSON à stocker ou à faire tourner, jetons de courte durée | clés de service accounts |
 | Un service account par usage | moindre privilège : l'extraction ne peut pas modifier les modèles, dbt ne peut pas écraser le brut | un compte unique |
 | LLM exécuté en local | aucun coût GPU cloud, données non envoyées à un prestataire | Cloud Run avec GPU, Vertex AI |
-| Extraction du domaine informatique, classification en aval | permet de suivre deux profils (Analytics Engineer, PL/SQL) et de changer la définition de « data » sans réextraire | filtre par mots-clés à l'API |
+| Filtre par mots-clés à l'API, une liste par environnement (réduite en dev) | volume limité et ciblé sur mes deux profils (Analytics Engineer, PL/SQL) ; la classification fine reste en aval. Limite : 1 150 résultats max par requête, une requête trop large est tronquée | extraction de tout le domaine informatique (élargissable plus tard) |
 | Pas de Secret Manager au départ | limiter la surface et les coûts ; les secrets sont dans les GitHub Environments | Secret Manager (à activer si le besoin apparaît) |
 | GitHub Actions planifié avant Airflow | suffisant pour une collecte quotidienne, sans infrastructure | Cloud Composer (coût élevé pour ce volume) |
 | Extraction en full-refresh, sans incrémental | l'API ne signale pas les offres fermées ; seul un instantané complet à chaque run permet à dbt de déduire les fermetures | incrémental sur `dateActualisation` (aurait manqué les fermetures) |
@@ -190,6 +192,7 @@ oracle/         Migrations, packages PL/SQL, application APEX, données fictives
 | `run.sh` et `load.sh` comme points d'entrée uniques | même commande testée en local, appelée par le CI puis plus tard par Airflow, sans dupliquer la logique | commandes Meltano/bq écrites directement dans le YAML du workflow |
 | `_raw` chargé en `STRING`, `PARSE_JSON` réservé à la couche staging dbt | BigQuery ne convertit pas une chaîne JSON-encodée en type `JSON` structuré au chargement ; garder `_raw` en chaîne évite de réintroduire le bug de sérialisation `Decimal` | déclarer `_raw` en type `JSON` (aucun gain sans objet non échappé en source) |
 | Chargement en mode `APPEND`, dédoublonnage laissé à dbt | plusieurs runs peuvent avoir lieu la même journée ; un remplacement de partition aurait écrasé les runs précédents du même jour | `--replace` sur la partition du jour (idempotent par jour, mais pas par run) |
+| Coordonnées de contact gardées en staging, exclues à partir de `int_offers` | utiles pour postuler (usage personnel), sans fuite vers les marts ou un dashboard public | masquage dès l'extraction (perte d'une information utile) |
 | `sa-extract` gère aussi le chargement BigQuery | droits déjà accordés sur `raw` dès la mise en place de la plateforme ; ce compte est responsable de toute la zone d'atterrissage, pas seulement du fichier GCS | un service account de chargement séparé |
 
 **Laissé de côté volontairement :** environnement de recette, orchestrateur managé, GPU cloud, Secret Manager.

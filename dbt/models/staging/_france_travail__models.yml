@@ -11,13 +11,13 @@ models:
       - name: offer_id
         data_tests:
           - not_null
-      - name: raw_json_text
+      - name: _raw
         data_tests:
           - not_null
-      - name: updated_at_source
+      - name: updated_at
         data_tests:
           - not_null
-      - name: ingested_at
+      - name: _ingested_at
         data_tests:
           - not_null
 
