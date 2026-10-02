@@ -43,7 +43,8 @@ export TAP_FRANCETRAVAIL_CLIENT_ID=... TAP_FRANCETRAVAIL_CLIENT_SECRET=...
 ## Conventions
 
 - Documentation, commentaires de code et README **en français**.
-- Messages de commit, messages de squash et titres de PR **en anglais**. Avec `gh pr merge --squash`, passer `--subject`/`--body` explicitement.
+- Titre et description de PR **en français**.
+- Messages de commit, et surtout message du commit de squash, **en anglais**. Avec `gh pr merge --squash`, passer `--subject`/`--body` en anglais explicitement, sinon GitHub reprend le titre français de la PR.
 - Branche dédiée pour chaque changement, PR vers `main` fusionnée en squash. `gh` est disponible.
 - Une décision de conception nouvelle ou modifiée se reporte dans la table « Choix techniques et compromis » du README, et la liste « Avancement » se met à jour en même temps que le code.
 - Pas de CI de test pour l'instant : valider localement (`dbt parse`, `terraform plan`, run en dev) avant de proposer une PR.
