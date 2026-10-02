@@ -19,9 +19,11 @@ models:
           - not_null
       - name: _valid_to
       - name: created_date
-        description: "DATE(created_at), pour jointure avec dim_date."
+        description: "DATE(created_at), pour jointure avec dim_date. Peut être NULL : created_at vient d'un SAFE_CAST sur dateCreation."
         data_tests:
-          - not_null
+          - not_null:
+              config:
+                severity: warn   # signale un dateCreation absent ou illisible sans bloquer le build
           - relationships:
               arguments:
                 to: ref('dim_date')
