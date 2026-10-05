@@ -2,6 +2,9 @@
 paths:
   - "dbt/**"
   - "loading/**"
+globs:
+  - "dbt/**"
+  - "loading/**"
 ---
 
 # Règles BigQuery
@@ -76,7 +79,7 @@ Ces points guident les explications, et évitent de transposer des réflexes qui
 - Les offres peuvent contenir des coordonnées de contact : ne pas les propager dans les marts sans besoin identifié.
 - Le dépôt est public : ne jamais versionner de données réelles, d'export ou de résultat de requête.
 
-## Garde-fous pour Claude
+## Garde-fous pour l'agent
 
 Avant toute commande : afficher le projet actif et vérifier qu'il s'agit du projet de dev.
 

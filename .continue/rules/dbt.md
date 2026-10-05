@@ -1,11 +1,13 @@
 ---
 paths:
   - "dbt/**"
+globs:
+  - "dbt/**"
 ---
 
 # Règles dbt
 
-Ces règles couvrent la transformation des données avec dbt sur BigQuery : couches, nommage, tests, matérialisations, environnements et commandes à risque. Le style SQL est défini par `.sqlfluff`, qui fait foi, et appliqué par `dbt format` et `dbt lint` (moteur Fusion).
+Ces règles couvrent la transformation des données avec dbt sur BigQuery : couches, nommage, tests, matérialisations, environnements, flux du projet et commandes à risque. Le projet s'exécute avec le **moteur Fusion** (dbt 2.x, `+static_analysis: strict`). Le style SQL est défini par `.sqlfluff`, qui fait foi, et appliqué par `dbt format` et `dbt lint`.
 
 ## Périmètre
 
@@ -13,6 +15,8 @@ Ces règles couvrent la transformation des données avec dbt sur BigQuery : couc
 - Seule exception : les datasets `pr_<numéro>` créés par dbt en CI, à supprimer à la fermeture de la PR.
 
 ## Structure
+
+Le projet dbt est dans `dbt/`. Toutes les commandes se lancent depuis ce dossier, où se trouve `profiles.yml`.
 
 ```text
 dbt_project.yml          # configuration par couche et vars
@@ -30,6 +34,16 @@ models/
 └── marts/
 ```
 
+## Commandes
+
+```bash
+export GCP_PROJECT_ID=jobboard-dev-3b375b      # requis par profiles.yml
+dbt parse --profiles-dir .                     # validation rapide, sans requête BigQuery
+dbt snapshot --select snap_france_travail__offers --profiles-dir .   # traite UN jour d'ingestion par appel
+dbt build --select <selection> --profiles-dir .                       # toujours une sélection ciblée
+dbt format -s <modele> --profiles-dir . && dbt lint -s <modele> --profiles-dir . --fix
+```
+
 ## Couches
 
 Les dépendances vont dans un seul sens : `raw`, puis snapshot, puis staging, puis intermediate, puis marts.
@@ -42,20 +56,41 @@ Les dépendances vont dans un seul sens : `raw`, puis snapshot, puis staging, pu
 - Aucune référence en dur à un projet, un dataset ou une table : toujours `ref()` ou `source()`. C'est ce qui permet à dbt de construire le graphe et de changer d'environnement.
 - Aucune valeur en dur dans les requêtes (seuils, dates, listes de codes) : les déclarer en `vars` dans `dbt_project.yml`.
 
+## Flux du projet
+
+```text
+source raw.france_travail_offers
+  → eph_france_travail__offers   (éphémère, filtre = sur UN _ingested_at, dédoublonne)
+  → snap_france_travail__offers  (SCD2 timestamp sur updated_at, hard_deletes: invalidate)
+  → stg_france_travail__offers   (incrémental merge, PARSE_JSON(_raw) + extraction des champs)
+  → int_offers                   (schéma commun multi-source, offer_key, sans contact_*/agency_*)
+  → fct_offers, dim_date         (marts)
+```
+
+- `raw.france_travail_offers` n'est lue que par `eph_france_travail__offers`. Le snapshot est déclaré en YAML et `relation:` n'accepte ni filtre ni SQL : c'est `eph_`, inliné dans la requête du snapshot, qui porte le filtre et le dédoublonnage.
+- Le filtre de `eph_` est un `=` volontaire : `hard_deletes: invalidate` compare les offres présentes un jour donné. Ne pas l'élargir en `>` ; un retard se rattrape en rejouant `dbt snapshot` plusieurs fois (un jour par appel).
+- Le jour traité vient de la macro `dbt/macros/target_ingested_at_france_travail_offers.sql`, lu dans `meta.state_snapshot` (table gérée par Terraform, avancée par le post-hook du snapshot). Forcer un jour en debug : `--vars '{"target_ingested_at_france_travail_offers": "<timestamp>"}'`.
+- `_raw` reste une chaîne jusqu'au snapshot inclus ; le `PARSE_JSON` se fait uniquement dans `stg_`.
+- Incrémentaux de `stg_` et `fct_offers` : deux marqueurs combinés par `UNION DISTINCT`, `valid_from` pour les nouvelles versions et `valid_to` pour les fermetures. Ne pas simplifier en un seul marqueur, les fermetures seraient perdues.
+- Grain de `stg_`, `int_offers` et `fct_offers` : une ligne par offre **et par version**. Clé unique : (`offer_id` ou `offer_key`, `_valid_from`).
+- `int_offers` contient un CTE `unioned` prévu pour ajouter une deuxième source : y ajouter un `UNION ALL` plutôt que restructurer.
+
 ## Nommage
 
-- Fichiers YAML : préfixe `_` et double underscore, un couple sources et models par source dans chaque répertoire.
+- Fichiers YAML : préfixe `_` et double underscore. En staging, un couple sources et models par source ; dans les autres couches, `_<couche>__models.yml`.
 - Modèles de staging : `stg_<source>__<entite>`, entité au pluriel. Le double underscore sépare la source de l'entité.
 - Le préfixe `eph_` est réservé aux rares modèles `ephemeral` créés pour un besoin particulier. Leur raison d'être est expliquée dans leur description.
 - Modèles intermediate : `int_<entite>` pour le modèle qui consolide une entité (`int_offers`), `int_<entite>__<action>` pour une étape (`int_offers__deduplicated`). Marts : `fct_<processus>` pour les faits, `dim_<entite>` pour les dimensions.
-- Colonnes en `snake_case` et en anglais. Clé primaire `<entite>_id`, booléens `is_` ou `has_`, horodatages `_at` (en UTC), dates `_date`.
+- Colonnes en `snake_case` et en anglais. Clé primaire `<entite>_id`, booléens `is_` ou `has_`, horodatages `_at` (en UTC), dates `_date`. Colonnes techniques préfixées par `_` (`_raw`, `_ingested_at`, `_valid_from`…).
 - Une même notion porte le même nom dans tous les modèles. Le renommage se fait une fois, en staging.
 - Descriptions des modèles et des colonnes en français.
 
 ## Style SQL et Jinja
 
-- Un modèle s'écrit en CTE : d'abord une CTE par `ref()` ou `source()`, puis les CTE de logique, puis un `select` final simple.
-- Liste de colonnes explicite dans les marts, pas de `select *` vers une table exposée : un ajout de colonne en amont ne doit pas modifier un mart en silence.
+- Style imposé par `.sqlfluff` : mots-clés en MAJUSCULES, fonctions et identifiants en minuscules, virgules en fin de ligne, 100 caractères max, indentation de 4 espaces, alias explicites.
+- Un modèle s'écrit en CTE successives à responsabilité unique : d'abord une CTE par `ref()` ou `source()`, puis les CTE de logique jusqu'à une CTE `final`, lue par un `SELECT * FROM final`.
+- Liste de colonnes explicite dans la CTE `final` des marts : un ajout de colonne en amont ne doit pas modifier un mart en silence.
+- Commentaire d'en-tête en français expliquant le *pourquoi* (grain, incrémental, choix écartés), comme dans les modèles existants.
 - Jinja au minimum : le SQL compilé doit rester lisible. Créer une macro quand une logique se répète au moins trois fois, pas avant, et la documenter.
 - `dbt format` puis `dbt lint` passent sans erreur avant chaque commit.
 
@@ -81,7 +116,7 @@ Le coût des requêtes est le premier critère de choix d'une matérialisation. 
 - Un modèle lu par plusieurs modèles en aval est matérialisé en `table` : en `view` ou en `ephemeral`, son calcul est refait et refacturé à chaque lecture.
 - Partitionner et clusteriser les grandes tables selon les filtres réellement utilisés par les consommateurs.
 - En dev, limiter le volume traité : `--select` ciblé et filtre sur une période récente.
-- `maximum_bytes_billed` est le filet de sécurité contre une requête qui scanne trop : c'est un signal à comprendre, pas un obstacle à lever.
+- `maximum_bytes_billed` (10 Go en dev et en ci) est le filet de sécurité contre une requête qui scanne trop : c'est un signal à comprendre, pas un obstacle à lever.
 
 ## Snapshots
 
@@ -97,7 +132,7 @@ Le coût des requêtes est le premier critère de choix d'une matérialisation. 
 
 ## Environnements
 
-- Trois targets : `dev` (par défaut), `ci` (dataset `pr_<numéro>`), `prod` (exécuté uniquement par la CI).
+- Trois targets : `dev` (par défaut), `ci` (dataset `pr_<numéro>`, déclaré dans `profiles.yml` mais pas encore branché sur une CI), `prod` (exécuté uniquement par la CI).
 - Authentification par `oauth` avec impersonation du service account `sa-dbt`. Aucune clé, aucun secret dans `profiles.yml`.
 - Le projet GCP vient de `GCP_PROJECT_ID`, et les targets `dev` et `prod` écrivent dans un dataset de même nom. Le target ne suffit donc pas à protéger la production : c'est la valeur de `GCP_PROJECT_ID` qui décide où dbt écrit.
 
@@ -106,7 +141,12 @@ Le coût des requêtes est le premier critère de choix d'une matérialisation. 
 - Version fixée pour chaque paquet dans `packages.yml`. `package-lock.yml` est versionné.
 - dbt change de moteur et de spécification YAML entre versions majeures. Vérifier la version installée (`dbt --version`) et la documentation correspondante avant de proposer une syntaxe, et ne jamais changer de version majeure sans PR dédiée.
 
-## Garde-fous pour Claude
+## Spécificités Fusion
+
+- `dbt_utils.generate_surrogate_key` échoue sous Fusion sur BigQuery : clé faite main `to_hex(md5(COALESCE(...) || '-' || COALESCE(...)))`.
+- Tests au format récent : `data_tests:` et paramètres sous `arguments:` (ex. `accepted_values`, `relationships`) ; la sévérité se règle sous `config:`.
+
+## Garde-fous pour l'agent
 
 Autorisé sans confirmation : `dbt --version`, `dbt deps`, `dbt parse`, `dbt compile`, `dbt ls`, `dbt format`, `dbt lint`.
 

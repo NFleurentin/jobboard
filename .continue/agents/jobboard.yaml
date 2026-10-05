@@ -1,0 +1,30 @@
+# Agent Continue du dépôt jobboard, avec des modèles locaux servis par Ollama.
+#
+# Aucune section `rules:` : Continue charge seul AGENTS.md à la racine et les
+# règles de .continue/rules/ (partagées avec Claude Code, voir AGENTS.md).
+# Une règle avec `globs:` n'est injectée que si un fichier correspondant est
+# dans le contexte ; une règle sans `globs:` l'est à chaque requête.
+name: jobboard (LLM local)
+version: 0.0.1
+schema: v1
+
+models:
+  - name: Qwen 2.5 Coder 7B
+    provider: ollama
+    model: qwen2.5-coder:7b
+    roles:
+      - chat
+      - edit
+      - apply
+      - autocomplete
+    defaultCompletionOptions:
+      # Transmis à Ollama comme num_ctx : les règles injectées en consomment
+      # une bonne partie, une valeur trop basse les tronque silencieusement.
+      contextLength: 16384
+
+# Providers @ ajoutés à ceux chargés par défaut (file, currentFile, diff,
+# terminal, problems, rules), qu'il est inutile de déclarer.
+context:
+  - provider: code
+  - provider: folder
+

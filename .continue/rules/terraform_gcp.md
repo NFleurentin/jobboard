@@ -1,6 +1,8 @@
 ---
 paths:
   - "infra/**"
+globs:
+  - "infra/**"
 ---
 
 # Règles Terraform
@@ -15,29 +17,41 @@ Ces règles couvrent l'infrastructure GCP décrite avec Terraform : organisation
 
 ## Organisation du code
 
-```text
-infra/
-├── bootstrap/        # bootstrap.sh : projets, APIs, bucket du state (gcloud)
-├── modules/          # data_platform, github_wif : code partagé par dev et prod
-├── envs/<env>/       # plateforme : un répertoire = un environnement = un state
-└── identity/<env>/   # Workload Identity Federation et sa-deployer, state séparé
-```
+| Dossier | Rôle | Prefix de state |
+|---|---|---|
+| `infra/bootstrap/bootstrap.sh` | Projets, facturation, APIs, bucket tfstate (gcloud, rejouable) | — |
+| `infra/modules/data_platform` | Buckets `raw`/`enriched`/`meltano-state`, datasets `raw` et `meta` (avec `meta.state_snapshot`), SA `sa-extract`/`sa-dbt`/`sa-enrich`, IAM | — |
+| `infra/modules/github_wif` | Pool WIF, `sa-deployer`, liaison service account ↔ GitHub Environment | — |
+| `infra/envs/<env>` | Instancie `data_platform` | `platform` |
+| `infra/identity/<env>` | Instancie `github_wif` | `identity` |
 
+- `identity/` est séparé de `envs/` volontairement : la CI ne peut pas modifier sa propre porte d'entrée, et détruire la plateforme dev ne supprime pas le pool WIF. Ne pas fusionner les deux states.
 - Un répertoire par environnement plutôt que des workspaces : l'environnement visé est visible dans le chemin, et une erreur de sélection est impossible.
+- Le code de `envs/dev` et `envs/prod` reste identique. Les différences entre environnements passent par `var.env` dans le module (ex. rétention du brut 7 j / 30 j) ou par `terraform.tfvars`.
 - Fichiers d'un répertoire d'environnement : `versions.tf` (versions de Terraform et des providers), `backend.tf`, `variables.tf`, `terraform.tfvars`, `main.tf` (appel du module). Dans un module, `main.tf`, `variables.tf` et `outputs.tf` ; découper `main.tf` par domaine (`bigquery.tf`, `iam.tf`, `storage.tf`) quand il devient difficile à relire.
 - Créer un module seulement quand un même ensemble de ressources est utilisé au moins deux fois. Un module prématuré ajoute de l'indirection sans bénéfice.
+- Une API GCP nouvelle s'ajoute dans la liste `APIS` de `bootstrap.sh`.
+
+## Commandes
+
+```bash
+export TF_VAR_user_email="<compte Google>"       # jamais commité
+gcloud auth application-default set-quota-project jobboard-dev-3b375b
+cd infra/envs/dev && terraform init && terraform plan
+```
 
 ## State
 
 Le state est le fichier où Terraform mémorise la correspondance entre le code et les ressources réelles. Il contient des valeurs sensibles en clair.
 
-- Backend distant sur un bucket GCS, jamais de state local ni versionné dans Git.
+- Backend distant sur le bucket GCS `gs://<projet>-tfstate` (créé par `bootstrap.sh`), jamais de state local ni versionné dans Git.
 - Bucket du state : versioning activé (retour arrière possible), accès uniforme, non public, accès limité au strict nécessaire.
 - Un state par environnement, pour qu'une erreur en dev ne puisse pas atteindre la production.
 - Ne jamais modifier le state à la main. Pour renommer ou adopter une ressource, utiliser les blocs `moved` et `import` dans le code : ils sont relus en PR et visibles dans le plan, contrairement aux commandes `terraform state mv` et `terraform import`.
 
 ## Versions
 
+- Versions minimales actuelles : Terraform 1.6, provider google 6.0.
 - Fixer `required_version` et la version de chaque provider avec l'opérateur `~>`, qui accepte les correctifs mais pas les versions majeures.
 - `.terraform.lock.hcl` est versionné : il garantit les mêmes binaires de providers pour tous et pour la CI.
 - Une montée de version de provider fait l'objet d'une PR dédiée, avec lecture du changelog et du plan.
@@ -58,12 +72,14 @@ Le state est le fichier où Terraform mémorise la correspondance entre le code 
 
 ## Sécurité
 
-- Aucun secret dans les fichiers `.tf`, dans une valeur par défaut de variable ou dans un `.tfvars` versionné. Les secrets vivent dans les GitHub Environments ou des variables d'environnement locales (pas de Secret Manager, voir le README).
+- Aucun secret dans les fichiers `.tf`, dans une valeur par défaut de variable ou dans un `.tfvars` versionné (`*.tfvars.local` n'est jamais commité). Les secrets vivent dans les GitHub Environments ou des variables d'environnement locales (pas de Secret Manager, voir le README).
 - `sensitive = true` masque une valeur dans les sorties, mais elle reste en clair dans le state : ce n'est pas une protection suffisante.
 - Le dépôt est public : ne pas versionner l'identifiant du compte de facturation ni d'adresses email personnelles. Les fournir par des variables non versionnées.
-- IAM au moindre privilège : pas de rôles `owner` ou `editor`, mais des rôles prédéfinis ciblés, attribués au niveau le plus bas possible (dataset ou bucket plutôt que projet).
+- IAM au moindre privilège : pas de rôles `owner` ou `editor`, mais des rôles prédéfinis ciblés, attribués au niveau le plus bas possible (dataset ou bucket plutôt que projet). Chaque rôle porte un commentaire sur sa ligne pour dire pourquoi il est nécessaire.
 - Utiliser les ressources `google_*_iam_member`, qui ajoutent un droit. Les variantes `_iam_policy` et `_iam_binding` sont autoritaires : elles suppriment les droits existants qu'elles ne déclarent pas, et peuvent couper l'accès à un projet.
 - Un service account par usage (Meltano, dbt, CI), jamais de compte partagé. Aucune clé de service account (`google_service_account_key`) : l'authentification passe par Workload Identity Federation.
+- L'accès humain passe par `roles/iam.serviceAccountTokenCreator` sur `var.user_email` (impersonation).
+- Mapping service account → GitHub Environment dans `identity/<env>/main.tf` (`sa_environment`) : en prod, `extract` est lié à `prod-collect` (sans approbation), `deployer` et `dbt` à `prod` (approbation manuelle).
 - Le dev est jetable : `force_destroy` et `delete_contents_on_destroy` y sont activés par `var.env`, et désactivés en prod. `prevent_destroy` n'accepte pas de variable : dans un module partagé, il bloquerait aussi la destruction du dev. La prod repose donc sur l'absence d'apply local et sur la lecture du plan.
 
 ## Lire un plan
@@ -75,11 +91,11 @@ Le state est le fichier où Terraform mémorise la correspondance entre le code 
 - Un plan qui annonce plus de changements que ceux du diff révèle une dérive (modification manuelle) ou un effet de bord : s'arrêter et comprendre avant d'appliquer.
 - Appliquer uniquement un plan enregistré (`terraform plan -out=tfplan` puis `terraform apply tfplan`), pour que ce qui est appliqué soit exactement ce qui a été relu.
 
-## Garde-fous pour Claude
+## Garde-fous pour l'agent
 
 Autorisé sans confirmation : `terraform fmt`, `terraform validate`, `terraform plan` sur dev, `terraform state list`, `terraform providers`.
 
-Après chaque plan : résumer en français ce qui sera créé, modifié et détruit, en signalant les remplacements, les changements d'IAM et les ressources qui génèrent un coût.
+Après chaque plan : résumer en français ce qui sera créé, modifié et détruit, en signalant les remplacements, les changements d'IAM et les ressources qui génèrent un coût. Une modification dans `identity/` peut couper l'accès de la CI : la signaler comme telle.
 
 Demander une confirmation explicite avant :
 

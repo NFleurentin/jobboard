@@ -105,7 +105,7 @@ git rebase origin/main
 - Préférer `git switch` à `git checkout` pour changer de branche.
 - Préférer `git restore` à `git checkout` pour restaurer des fichiers.
 
-## Garde-fous pour Claude
+## Garde-fous pour l'agent
 
 Autorisé sans confirmation : les commandes en lecture (`status`, `diff`, `log`, `show`, `branch`, `fetch`), la création de branche et `git add` sur des fichiers nommés.
 

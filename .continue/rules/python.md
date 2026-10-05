@@ -2,6 +2,9 @@
 paths:
   - "**/*.py"
   - "**/pyproject.toml"
+globs:
+  - "**/*.py"
+  - "**/pyproject.toml"
 ---
 
 # Règles Python
@@ -67,7 +70,7 @@ Ces règles couvrent le code Python du dépôt : scripts d'outillage, extracteur
 - Pas de `eval` ni `exec`. Pas de `subprocess` avec `shell=True` sur une valeur variable : passer la commande sous forme de liste.
 - `yaml.safe_load` et jamais `yaml.load`. Ne jamais désérialiser avec `pickle` une donnée d'origine non maîtrisée.
 
-## Garde-fous pour Claude
+## Garde-fous pour l'agent
 
 Autorisé sans confirmation : `uv sync`, `uv run ruff format`, `uv run ruff check`, `uv run mypy`, `uv run pytest`.
 
