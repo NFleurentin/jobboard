@@ -1,6 +1,8 @@
 ---
 paths:
   - "infra/**"
+globs:
+  - "infra/**"
 ---
 
 # Règles Terraform

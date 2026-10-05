@@ -1,6 +1,8 @@
 ---
 paths:
   - "**/*.sh"
+globs:
+  - "**/*.sh"
 ---
 
 # Règles Bash

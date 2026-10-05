@@ -1,6 +1,8 @@
 ---
 paths:
   - "extraction/**"
+globs:
+  - "extraction/**"
 ---
 
 # Règles Meltano

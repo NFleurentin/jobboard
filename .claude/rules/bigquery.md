@@ -2,6 +2,9 @@
 paths:
   - "dbt/**"
   - "loading/**"
+globs:
+  - "dbt/**"
+  - "loading/**"
 ---
 
 # Règles BigQuery

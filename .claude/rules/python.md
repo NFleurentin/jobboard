@@ -2,6 +2,9 @@
 paths:
   - "**/*.py"
   - "**/pyproject.toml"
+globs:
+  - "**/*.py"
+  - "**/pyproject.toml"
 ---
 
 # Règles Python

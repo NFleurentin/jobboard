@@ -1,6 +1,8 @@
 ---
 paths:
   - "dbt/**"
+globs:
+  - "dbt/**"
 ---
 
 # Règles dbt
