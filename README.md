@@ -167,6 +167,7 @@ enrichment/     Enrichissement LLM (à venir)
 oracle/         Migrations, packages PL/SQL, application APEX, données fictives (à venir)
 orchestration/  Orchestration Airflow (à venir)
 .github/        Workflows CI/CD
+.continue/      Règles des assistants IA (partagées avec Claude Code) et agent Continue local
 ```
 
 ## Choix techniques et compromis
@@ -194,6 +195,7 @@ orchestration/  Orchestration Airflow (à venir)
 | Chargement en mode `APPEND`, dédoublonnage laissé à dbt | plusieurs runs peuvent avoir lieu la même journée ; un remplacement de partition aurait écrasé les runs précédents du même jour | `--replace` sur la partition du jour (idempotent par jour, mais pas par run) |
 | Coordonnées de contact gardées en staging, exclues à partir de `int_offers` | utiles pour postuler (usage personnel), sans fuite vers les marts ou un dashboard public | masquage dès l'extraction (perte d'une information utile) |
 | `sa-extract` gère aussi le chargement BigQuery | droits déjà accordés sur `raw` dès la mise en place de la plateforme ; ce compte est responsable de toute la zone d'atterrissage, pas seulement du fichier GCS | un service account de chargement séparé |
+| Règles des assistants IA dans `.continue/rules/`, `.claude/rules` en lien symbolique, `AGENTS.md` à la racine importé par `CLAUDE.md` | une seule source lue nativement par Claude Code et Continue (LLM local) ; chaque règle porte `paths:` et `globs:` pour n'être chargée que sur son périmètre | `uses:` dans l'agent Continue (chemins relatifs cassés par un bug de Continue), un CLAUDE.md par sous-dossier (ignoré par Continue) |
 
 **Laissé de côté volontairement :** environnement de recette, orchestrateur managé, GPU cloud, Secret Manager.
 

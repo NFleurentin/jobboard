@@ -1,12 +1,9 @@
 # Agent Continue du dépôt jobboard, avec des modèles locaux servis par Ollama.
 #
-# Les règles pointent vers les fichiers de Claude Code, qui restent la source
-# unique : ne pas les recopier ici. Les chemins relatifs sont résolus depuis
-# le dossier de ce fichier (.continue/agents/).
-#
-# Continue lit la clé `globs:` du frontmatter (Claude Code lit `paths:`) :
-# une règle avec `globs:` n'est injectée que si un fichier correspondant est
-# dans le contexte. Une règle sans `globs:` est injectée à chaque requête.
+# Aucune section `rules:` : Continue charge seul AGENTS.md à la racine et les
+# règles de .continue/rules/ (partagées avec Claude Code, voir AGENTS.md).
+# Une règle avec `globs:` n'est injectée que si un fichier correspondant est
+# dans le contexte ; une règle sans `globs:` l'est à chaque requête.
 name: jobboard (LLM local)
 version: 0.0.1
 schema: v1
@@ -36,18 +33,3 @@ context:
   - provider: code
   - provider: folder
 
-rules:
-  # Toujours injectées
-  - uses: ../../CLAUDE.md
-  - uses: ../../dbt/CLAUDE.md
-  - uses: ../../extraction/CLAUDE.md
-  - uses: ../../infra/CLAUDE.md
-  - uses: ../../.claude/rules/git.md
-  - uses: ../../.claude/rules/github.md
-  # Injectées selon leurs globs
-  - uses: ../../.claude/rules/bash.md
-  - uses: ../../.claude/rules/bigquery.md
-  - uses: ../../.claude/rules/dbt.md
-  - uses: ../../.claude/rules/meltano.md
-  - uses: ../../.claude/rules/python.md
-  - uses: ../../.claude/rules/terraform_gcp.md

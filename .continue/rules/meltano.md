@@ -7,10 +7,11 @@ globs:
 
 # Règles Meltano
 
-Ces règles couvrent l'extraction et le chargement avec Meltano : organisation de la configuration, plugins, secrets, state et commandes à risque. Le code Python du tap suit aussi `python.md`.
+Ces règles couvrent l'extraction et le chargement avec Meltano : organisation de la configuration, plugins, secrets, state, tap France Travail et commandes à risque. Le code Python du tap suit aussi `python.md`.
 
 ## Périmètre
 
+- Le projet Meltano lance `tap-francetravail` (tap Singer maison, dans `taps/tap-francetravail/`) vers `target-gcs--francetravail` (hérite de `target-gcs`, variante datateer).
 - Meltano fait l'extraction et le chargement (EL). La réponse de l'API n'est pas interprétée : elle est écrite telle quelle dans un champ `_raw` du fichier JSONL, accompagnée de champs techniques.
 - Le format de sortie est donc stable : ajouter ou typer un champ métier se fait dans le staging dbt, jamais dans le tap.
 - Aucune transformation métier dans Meltano : elle se fait dans dbt. Les mappers et `stream_maps` sont réservés au technique (masquer une donnée personnelle, écarter un champ).
@@ -33,12 +34,22 @@ taps/
 └── tap-francetravail/           # code du tap, avec son propre environnement uv
 ```
 
-- `meltano.yml` ne contient que les paramètres de projet et `include_paths`. Aucun plugin, job ou environnement n'y est déclaré.
+- `meltano.yml` ne contient que les paramètres de projet et `include_paths` (`plugins/**/*.meltano.yml` et `environments/*.meltano.yml`). Aucun plugin, job ou environnement n'y est déclaré.
 - Un fichier par plugin, nommé comme le plugin, avec le suffixe `--<variant>` quand le variant doit être explicite.
 - Un plugin, un job ou un environnement n'est déclaré qu'une seule fois, dans un seul fichier.
-- Les fichiers d'environnement ne contiennent que ce qui diffère entre dev et prod (bucket, dates de départ, volumes). La configuration commune reste dans le fichier du plugin.
+- Les fichiers d'environnement ne contiennent que ce qui diffère entre dev et prod : le bucket cible et les requêtes de recherche (`search_queries`, liste réduite en dev, complète en prod). La configuration commune reste dans le fichier du plugin. Garder les deux fichiers symétriques en structure.
 - Après une commande qui écrit dans la configuration (`meltano add`, `meltano config ... set`), vérifier avec `git diff` dans quel fichier elle a écrit, et déplacer le contenu au bon endroit si elle a touché `meltano.yml`.
 - Les fichiers `.lock` générés sous `plugins/` sont versionnés et ne se modifient jamais à la main. `.meltano/` n'est jamais versionné.
+
+## Commandes
+
+```bash
+pip install "meltano[gcs]"                      # [gcs] requis pour le state distant
+meltano --environment=dev install               # installe le tap en mode éditable (pip_url: -e)
+./run.sh                                        # seul point d'entrée d'une extraction
+```
+
+Développement du tap seul : `cd taps/tap-francetravail && uv sync`, puis voir `extraction/taps/tap-francetravail/README.md` pour un test avec `config.json` (jamais commité).
 
 ## Plugins
 
@@ -57,7 +68,7 @@ taps/
 
 ## State
 
-L'extraction France Travail est en full-refresh (voir `extraction/CLAUDE.md`) : son state ne sert pas de point de reprise. Les règles ci-dessous valent pour tout stream incrémental à venir, et `run.sh` fixe quand même le backend GCS.
+L'extraction France Travail est en full-refresh (voir « Tap France Travail ») : son state ne sert pas de point de reprise. Les règles ci-dessous valent pour tout stream incrémental à venir, et `run.sh` fixe quand même le backend GCS.
 
 Le state mémorise où chaque extraction incrémentale s'est arrêtée. C'est l'équivalent d'un high-water mark de chargement : le perdre force une reprise complète, le fausser fait sauter ou rejouer des données.
 
@@ -84,7 +95,15 @@ Le state mémorise où chaque extraction incrémentale s'est arrêtée. C'est l'
 - Aucun secret ni donnée personnelle dans les logs du tap.
 - Les tests du tap n'appellent pas l'API réelle : ils s'appuient sur des réponses enregistrées.
 
-## Garde-fous pour Claude
+## Tap France Travail
+
+- **Full-refresh volontaire** : pas de `replication_key`. L'API ne signale pas les offres fermées ; un instantané complet à chaque run permet au snapshot dbt de déduire les fermetures. Ne pas passer en incrémental.
+- **Forme des records figée** : `id`, `dateActualisation`, `_raw` (payload complet sérialisé par `json.dumps`), `_extracted_at`, `_ingested_at`. Émettre `_raw` en objet imbriqué réintroduirait le bug `Decimal` non sérialisable du target. Toute modification de cette forme impose de mettre à jour `loading/schemas/france_travail/offers_raw.json` et la source dbt.
+- `_ingested_at` est lu depuis la variable `INGESTED_AT` (format `%Y%m%dT%H%M%SZ`) ; le chemin GCS en dépend aussi : `france-travail/offers/ingested_at=<INGESTED_AT>/part-<timestamp>.jsonl`.
+- Pagination par `range` (pages de 150) : HTTP 206 signale qu'il reste des pages, et l'API plafonne à **1 150 résultats par requête**. Une requête trop large est tronquée silencieusement : préférer plusieurs requêtes ciblées.
+- Chaque entrée de `search_queries` est une partition exécutée indépendamment ; une même offre peut donc sortir plusieurs fois, d'où la déduplication dans dbt.
+
+## Garde-fous pour l'agent
 
 La syntaxe de plusieurs commandes a changé entre les versions majeures de Meltano. Vérifier avec `meltano <commande> --help` avant de proposer une commande, plutôt que de reproduire une syntaxe de mémoire.
 

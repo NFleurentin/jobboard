@@ -11,7 +11,7 @@ Tout changement arrive sur `main` par une pull request, jamais par un push direc
 - Le titre suit le format Conventional Commits défini dans `git.md`. Avec le squash merge, ce titre devient le message de commit sur `main`.
 - Langue : le titre est en anglais, comme les commits. La description et les commentaires sont en français.
 - La description comporte quatre sections : Pourquoi (le besoin), Quoi (les changements principaux, sans paraphraser le diff), Comment tester, Impact (changement cassant, coût, migration, ou "Aucun").
-- Fusionner avec une CI verte dès qu'une CI existe. En attendant, la validation locale décrite dans `CLAUDE.md` en tient lieu.
+- Fusionner avec une CI verte dès qu'une CI existe. En attendant, la validation locale décrite dans `AGENTS.md` en tient lieu.
 - Projet à un seul contributeur : aucune approbation n'est requise.
 - Répondre à chaque commentaire de relecture, par un commit ou par une réponse. C'est l'auteur du commentaire qui le résout.
 
@@ -28,7 +28,7 @@ Seul le squash merge est utilisé : tous les commits de la branche deviennent un
 
 ## Protection de `main`
 
-État attendu de la configuration du dépôt. Claude ne la modifie jamais, mais signale tout écart constaté.
+État attendu de la configuration du dépôt. L'agent ne la modifie jamais, mais signale tout écart constaté.
 
 - Pull request obligatoire.
 - Checks de CI obligatoires dès qu'une CI existe, et branche à jour avant fusion.
@@ -86,10 +86,10 @@ Ne jamais interpoler une donnée contrôlée par un tiers (titre de PR, nom de b
 
 ## Déploiement
 
-- Les déploiements (`terraform apply`, exécutions dbt et Meltano en production) passent uniquement par la CI, depuis `main`, via l'environment protégé. Jamais depuis un poste local. Seules exceptions, faute de CI possible : `bootstrap.sh` et `identity/prod` (la CI ne modifie pas sa propre porte d'entrée), appliqués à la main par le propriétaire du dépôt, jamais par Claude.
+- Les déploiements (`terraform apply`, exécutions dbt et Meltano en production) passent uniquement par la CI, depuis `main`, via l'environment protégé. Jamais depuis un poste local. Seules exceptions, faute de CI possible : `bootstrap.sh` et `identity/prod` (la CI ne modifie pas sa propre porte d'entrée), appliqués à la main par le propriétaire du dépôt, jamais par un agent.
 - Sur une PR, la CI (à venir) se limite à la validation : lint, `terraform plan`, build et tests dbt dans un dataset dédié à la CI.
 
-## Garde-fous pour Claude
+## Garde-fous pour l'agent
 
 Autorisé sans confirmation, en lecture seule : `gh pr view`, `gh pr list`, `gh pr diff`, `gh pr checks`, `gh run list`, `gh run view`, `gh issue view`, `gh issue list`.
 

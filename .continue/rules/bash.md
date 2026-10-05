@@ -48,7 +48,7 @@ Ces règles couvrent les scripts shell du dépôt (`extraction/run.sh`, `loading
 - `shellcheck` passe sans avertissement. Une exclusion (`# shellcheck disable=...`) porte sa justification sur la même ligne.
 - Les scripts sont exécutables et portent l'extension `.sh`.
 
-## Garde-fous pour Claude
+## Garde-fous pour l'agent
 
 Autorisé sans confirmation : `shellcheck`, `bash -n` (vérification de syntaxe sans exécution).
 
