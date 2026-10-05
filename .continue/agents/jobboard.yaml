@@ -9,23 +9,18 @@ version: 0.0.1
 schema: v1
 
 models:
-  - name: Devstral Small 2
+  - name: Qwen 2.5 Coder 7B
     provider: ollama
-    model: devstral-small-2:latest
+    model: qwen2.5-coder:7b
     roles:
       - chat
       - edit
       - apply
+      - autocomplete
     defaultCompletionOptions:
       # Transmis à Ollama comme num_ctx : les règles injectées en consomment
       # une bonne partie, une valeur trop basse les tronque silencieusement.
-      contextLength: 32768
-
-  - name: Qwen2.5 Coder 7B
-    provider: ollama
-    model: qwen2.5-coder:7b
-    roles:
-      - autocomplete
+      contextLength: 16384
 
 # Providers @ ajoutés à ceux chargés par défaut (file, currentFile, diff,
 # terminal, problems, rules), qu'il est inutile de déclarer.
