@@ -7,34 +7,11 @@ globs:
 
 # Règles dbt
 
-Ces règles couvrent la transformation des données avec dbt sur BigQuery : couches, nommage, tests, matérialisations, environnements, flux du projet et commandes à risque. Le projet s'exécute avec le **moteur Fusion** (dbt 2.x, `+static_analysis: strict`). Le style SQL est défini par `.sqlfluff`, qui fait foi, et appliqué par `dbt format` et `dbt lint`.
-
-## Périmètre
-
-- dbt transforme des données déjà chargées dans BigQuery. Il ne fait ni extraction ni chargement (Meltano), ni gestion des datasets permanents et des droits (Terraform).
-- Seule exception : les datasets `pr_<numéro>` créés par dbt en CI, à supprimer à la fermeture de la PR.
-
-## Structure
-
-Le projet dbt est dans `dbt/`. Toutes les commandes se lancent depuis ce dossier, où se trouve `profiles.yml`.
-
-```text
-dbt_project.yml          # configuration par couche et vars
-profiles.yml             # targets dev, ci, prod, sans aucun secret
-packages.yml
-.sqlfluff
-macros/
-snapshots/
-models/
-├── staging/
-│   ├── _<source>__sources.yml
-│   ├── _<source>__models.yml
-│   └── stg_<source>__<entite>.sql
-├── intermediate/
-└── marts/
-```
+Le projet suit le guide *How we structure our dbt projects* de dbt Labs (couches staging, intermediate et marts, nommage, une CTE par import puis une CTE `final`, `ref()` et `source()` partout). Seuls les écarts, les spécificités et les garde-fous sont listés ici. Il s'exécute avec le **moteur Fusion** (dbt 2.x, `+static_analysis: strict`). Le style SQL est défini par `.sqlfluff`, appliqué par `dbt format` et `dbt lint`. Le coût et la conception des tables BigQuery sont dans `bigquery.md`.
 
 ## Commandes
+
+Toutes les commandes se lancent depuis `dbt/`, où se trouve `profiles.yml`.
 
 ```bash
 export GCP_PROJECT_ID=jobboard-dev-3b375b      # requis par profiles.yml
@@ -46,14 +23,8 @@ dbt format -s <modele> --profiles-dir . && dbt lint -s <modele> --profiles-dir .
 
 ## Couches
 
-Les dépendances vont dans un seul sens : `raw`, puis snapshot, puis staging, puis intermediate, puis marts.
-
-- **snapshot** : un snapshot par table brute. Il réduit les instantanés quotidiens à une ligne par offre et par version, et conserve `_raw` sans l'interpréter.
-- **staging** : un modèle par snapshot, sans jointure ni agrégation. Uniquement l'extraction des champs de `_raw`, du renommage, du typage et du nettoyage.
-- Chaque source n'est appelée par `source()` que dans un seul modèle. Tous les autres passent par `ref()`.
-- **intermediate** : les étapes de logique métier (jointures, règles de gestion, calculs). Ces modèles ne sont pas exposés aux consommateurs.
-- **marts** : les modèles exposés, un par entité ou processus métier. Un mart ne contient pas de logique complexe : elle est préparée en intermediate.
-- Aucune référence en dur à un projet, un dataset ou une table : toujours `ref()` ou `source()`. C'est ce qui permet à dbt de construire le graphe et de changer d'environnement.
+- Une couche **snapshot** s'intercale entre `raw` et staging : un snapshot par table brute, qui réduit les instantanés quotidiens à une ligne par offre et par version et conserve `_raw` sans l'interpréter.
+- Staging : un modèle par snapshot, qui extrait les champs de `_raw`, renomme, type et nettoie.
 - Aucune valeur en dur dans les requêtes (seuils, dates, listes de codes) : les déclarer en `vars` dans `dbt_project.yml`.
 
 ## Flux du projet
@@ -77,72 +48,50 @@ source raw.france_travail_offers
 
 ## Nommage
 
-- Fichiers YAML : préfixe `_` et double underscore. En staging, un couple sources et models par source ; dans les autres couches, `_<couche>__models.yml`.
-- Modèles de staging : `stg_<source>__<entite>`, entité au pluriel. Le double underscore sépare la source de l'entité.
-- Le préfixe `eph_` est réservé aux rares modèles `ephemeral` créés pour un besoin particulier. Leur raison d'être est expliquée dans leur description.
-- Modèles intermediate : `int_<entite>` pour le modèle qui consolide une entité (`int_offers`), `int_<entite>__<action>` pour une étape (`int_offers__deduplicated`). Marts : `fct_<processus>` pour les faits, `dim_<entite>` pour les dimensions.
-- Colonnes en `snake_case` et en anglais. Clé primaire `<entite>_id`, booléens `is_` ou `has_`, horodatages `_at` (en UTC), dates `_date`. Colonnes techniques préfixées par `_` (`_raw`, `_ingested_at`, `_valid_from`…).
-- Une même notion porte le même nom dans tous les modèles. Le renommage se fait une fois, en staging.
-- Descriptions des modèles et des colonnes en français.
+- Le préfixe `eph_` est réservé aux rares modèles `ephemeral` créés pour un besoin particulier, expliqué dans leur description.
+- Intermediate : `int_<entite>` pour le modèle qui consolide une entité, `int_<entite>__<action>` pour une étape.
+- Colonnes techniques préfixées par `_` (`_raw`, `_ingested_at`, `_valid_from`…). Horodatages `_at`, en UTC.
+- Colonnes en anglais ; descriptions des modèles et des colonnes en français.
 
-## Style SQL et Jinja
+## Style et tests
 
-- Style imposé par `.sqlfluff` : mots-clés en MAJUSCULES, fonctions et identifiants en minuscules, virgules en fin de ligne, 100 caractères max, indentation de 4 espaces, alias explicites.
-- Un modèle s'écrit en CTE successives à responsabilité unique : d'abord une CTE par `ref()` ou `source()`, puis les CTE de logique jusqu'à une CTE `final`, lue par un `SELECT * FROM final`.
 - Liste de colonnes explicite dans la CTE `final` des marts : un ajout de colonne en amont ne doit pas modifier un mart en silence.
 - Commentaire d'en-tête en français expliquant le *pourquoi* (grain, incrémental, choix écartés), comme dans les modèles existants.
-- Jinja au minimum : le SQL compilé doit rester lisible. Créer une macro quand une logique se répète au moins trois fois, pas avant, et la documenter.
+- Créer une macro quand une logique se répète au moins trois fois, pas avant.
+- Dans les marts, toutes les colonnes sont décrites, et un contrat (`contract: enforced`) fige leurs noms et leurs types.
+- Chaque source déclare sa `freshness`. Une logique métier non triviale est couverte par un test unitaire.
+- Un test en `severity: warn` porte un commentaire qui justifie pourquoi il n'est pas bloquant.
 - `dbt format` puis `dbt lint` passent sans erreur avant chaque commit.
 
-## Tests et documentation
+## Matérialisations
 
-- Chaque modèle a une description et une clé primaire testée (`unique` et `not_null`).
-- Clés étrangères testées avec `relationships`, colonnes à valeurs énumérées avec `accepted_values`.
-- Chaque source déclare sa fraîcheur attendue (`freshness`).
-- Dans les marts, toutes les colonnes sont décrites, et un contrat (`contract: enforced`) fige leurs noms et leurs types.
-- Une logique métier non triviale est couverte par un test unitaire, avec des données d'exemple.
-- Un test en `severity: warn` porte un commentaire qui justifie pourquoi il n'est pas bloquant.
-
-## Matérialisations et coût
-
-Le coût des requêtes est le premier critère de choix d'une matérialisation. Sur BigQuery en facturation à la demande, ce coût dépend des octets lus, pas du nombre de lignes écrites ni du temps de calcul.
-
-- staging : `incremental` quand il extrait les champs de `_raw` depuis un snapshot, pour ne traiter que les lignes nouvelles ou modifiées depuis le dernier run. `view` sinon.
-- Un filtre incrémental ne réduit les octets lus que si la table lue est partitionnée ou clusterisée sur la colonne filtrée. Sinon, la colonne `_raw` du snapshot est relue en entier à chaque run : le vérifier par un dry run.
-- intermediate : `view` ou `ephemeral`. marts : `table` ou `incremental`.
-- Privilégier `incremental` dès qu'il évite de relire des données déjà traitées. Il s'accompagne toujours de `partition_by`, d'un filtre sur la partition côté source et côté cible, et d'un `on_schema_change` explicite.
-- Un modèle incrémental n'est pas moins cher par nature : il relit sa propre table pour trouver son point de reprise, et un `merge` sans filtre de partition scanne toute la cible. Comparer les octets lus des deux approches par un dry run avant de choisir.
-- Ne sélectionner que les colonnes utiles : le stockage est en colonnes, chaque colonne lue est facturée.
-- Un modèle lu par plusieurs modèles en aval est matérialisé en `table` : en `view` ou en `ephemeral`, son calcul est refait et refacturé à chaque lecture.
-- Partitionner et clusteriser les grandes tables selon les filtres réellement utilisés par les consommateurs.
-- En dev, limiter le volume traité : `--select` ciblé et filtre sur une période récente.
-- `maximum_bytes_billed` (10 Go en dev et en ci) est le filet de sécurité contre une requête qui scanne trop : c'est un signal à comprendre, pas un obstacle à lever.
+- staging : `incremental` quand il extrait les champs de `_raw` depuis un snapshot, `view` sinon. intermediate : `view` ou `ephemeral`. marts : `table` ou `incremental`.
+- Un `incremental` s'accompagne toujours de `partition_by`, d'un filtre sur la partition côté source et côté cible, et d'un `on_schema_change` explicite.
+- Il n'est pas moins cher par nature : il relit sa propre table pour trouver son point de reprise, et un `merge` sans filtre de partition scanne toute la cible. Comparer les deux approches par un dry run avant de choisir.
+- Un modèle lu par plusieurs modèles en aval est matérialisé en `table` : en `view` ou en `ephemeral`, son calcul est refacturé à chaque lecture.
+- `maximum_bytes_billed` (10 Go en dev et en ci) est un signal à comprendre, pas un obstacle à lever.
 
 ## Snapshots
 
-- Un snapshot historise une source modifiable (SCD type 2). Il porte sur la donnée brute, pas sur un modèle transformé.
 - Le snapshot des offres a deux rôles : suivre les évolutions d'une offre, et détecter sa clôture. Une offre absente de la dernière extraction est considérée comme close.
 - La détection de clôture suppose une extraction complète. Après une extraction partielle, toutes les offres manquantes seraient marquées closes à tort, puis rouvertes au run suivant. Un test de volume sur la source bloque donc le snapshot quand la dernière partition est anormalement petite.
 - Elle suppose aussi un périmètre de recherche constant : retirer ou modifier un critère de `search_queries` dans Meltano fait passer pour closes les offres qui sortent du périmètre.
 - La date de clôture est déduite, pas fournie par la source : c'est la date du premier run où l'offre est absente. La colonne et sa description le disent explicitement.
 - Une offre close peut réapparaître : les modèles en aval gèrent ce cas au lieu de supposer qu'une clôture est définitive.
-- Sa requête ne lit qu'une seule partition `_ingested_at` de la table brute (le prochain jour à traiter), et retourne une seule ligne par clé. Une clé en double fait échouer la fusion ou fausse l'historique.
-- La détection de changement porte sur une colonne courte (date de mise à jour fournie par la source, ou empreinte de `_raw`), pas sur `_raw` lui-même : la comparaison relit cette colonne dans tout le snapshot à chaque run.
+- Sa requête retourne une seule ligne par clé : une clé en double fait échouer la fusion ou fausse l'historique.
+- La détection de changement porte sur une colonne courte (`updated_at`, ou une empreinte de `_raw`), pas sur `_raw` lui-même : la comparaison relit cette colonne dans tout le snapshot à chaque run.
 - L'historique d'un snapshot est irremplaçable : il ne peut pas être reconstruit à partir de la source.
 
 ## Environnements
 
-- Trois targets : `dev` (par défaut), `ci` (dataset `pr_<numéro>`, déclaré dans `profiles.yml` mais pas encore branché sur une CI), `prod` (exécuté uniquement par la CI).
-- Authentification par `oauth` avec impersonation du service account `sa-dbt`. Aucune clé, aucun secret dans `profiles.yml`.
+- Trois targets : `dev` (par défaut, dataset `analytics`), `ci` (dataset `pr_<numéro>`, déclaré mais pas encore branché sur une CI, supprimé à la fermeture de la PR), `prod` (exécuté uniquement par la CI).
+- Authentification `oauth` avec impersonation de `sa-dbt`. Aucun secret dans `profiles.yml`.
 - Le projet GCP vient de `GCP_PROJECT_ID`, et les targets `dev` et `prod` écrivent dans un dataset de même nom. Le target ne suffit donc pas à protéger la production : c'est la valeur de `GCP_PROJECT_ID` qui décide où dbt écrit.
 
-## Paquets et versions
+## Paquets et Fusion
 
 - Version fixée pour chaque paquet dans `packages.yml`. `package-lock.yml` est versionné.
-- dbt change de moteur et de spécification YAML entre versions majeures. Vérifier la version installée (`dbt --version`) et la documentation correspondante avant de proposer une syntaxe, et ne jamais changer de version majeure sans PR dédiée.
-
-## Spécificités Fusion
-
+- dbt change de moteur et de spécification YAML entre versions majeures. Vérifier la version installée (`dbt --version`) et la documentation correspondante avant de proposer une syntaxe. Pas de changement de version majeure sans PR dédiée.
 - `dbt_utils.generate_surrogate_key` échoue sous Fusion sur BigQuery : clé faite main `to_hex(md5(COALESCE(...) || '-' || COALESCE(...)))`.
 - Tests au format récent : `data_tests:` et paramètres sous `arguments:` (ex. `accepted_values`, `relationships`) ; la sévérité se règle sous `config:`.
 
