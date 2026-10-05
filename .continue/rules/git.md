@@ -1,109 +1,37 @@
 # Règles Git
 
-Ces règles précisent, pour ce dépôt, les garde-fous généraux. Elles couvrent uniquement Git : branches, commits, historique et commandes à risque.
+Ces règles couvrent Git : branches, commits, historique et commandes à risque. Les pull requests sont dans `github.md`.
 
-## Modèle de branches
+## Branches
 
-Le dépôt suit un modèle trunk-based : une branche `main` toujours stable, et des branches de travail courtes qui en partent et y reviennent.
+Modèle trunk-based : `main` toujours stable, branches de travail courtes (quelques jours) créées depuis un `main` à jour (`git switch main && git pull --rebase`).
 
-- `main` est la seule branche longue. Ne jamais committer directement dessus.
-- Une branche = un sujet. Si le travail déborde du sujet, créer une autre branche.
-- Durée de vie visée : quelques jours. Une branche longue accumule les conflits et rend la relecture difficile.
-- Toujours créer la branche depuis un `main` à jour :
-
-```bash
-git switch main
-git pull --rebase
-git switch -c feat/orders-incremental
-```
-
-## Nommage des branches
-
-Format : `<type>/<description>`
-
-- `type` : un des types de commit listés plus bas (`feat`, `fix`, `docs`...).
-- `description` : 2 à 5 mots en anglais, minuscules, séparés par des tirets (kebab-case).
-
-| Correct | Incorrect | Raison |
-|---|---|---|
-| `feat/orders-incremental` | `feature_orders` | type non normalisé, underscore |
-| `fix/null-customer-id` | `fix/Bug` | majuscule, description vide de sens |
-| `chore/upgrade-dbt-1-9` | `nicolas/test` | nom de personne, sujet inconnu |
+- Ne jamais committer directement sur `main`. Une branche = un sujet : si le travail déborde, créer une autre branche.
+- Nom : `<type>/<description>`, avec un type de commit ci-dessous et 2 à 5 mots en anglais, en kebab-case (`feat/orders-incremental`, `fix/null-customer-id`).
 
 ## Messages de commit
 
-Format Conventional Commits :
+Format Conventional Commits : `<type>(<scope>): <sujet>`, une ligne vide, puis un corps qui explique le pourquoi.
 
-```text
-<type>(<scope>): <sujet>
-
-<corps : pourquoi ce changement>
-```
-
-Types autorisés :
-
-| Type | Usage |
-|---|---|
-| `feat` | nouvelle fonctionnalité (modèle, source, extracteur, ressource) |
-| `fix` | correction d'un comportement incorrect |
-| `refactor` | restructuration sans changement de comportement |
-| `perf` | amélioration de performance ou de coût |
-| `test` | ajout ou correction de tests |
-| `docs` | documentation uniquement |
-| `ci` | pipelines d'intégration et de déploiement |
-| `chore` | maintenance : dépendances, configuration, outillage |
-| `revert` | annulation d'un commit précédent |
-
-Scopes : `dbt`, `meltano`, `terraform`, `ci`, `docs`. Le scope est optionnel si le changement est transverse.
-
-Règles du sujet :
-
-- en anglais, à l'impératif présent (`add`, pas `added` ni `adds`) ;
-- 72 caractères maximum, sans majuscule initiale ni point final ;
-- décrit l'effet du changement, pas l'activité (`fix null handling in customer join`, pas `update model`).
-- si le changement casse un contrat (colonne renommée ou supprimée, variable Terraform modifiée), ajouter `!` avant les deux-points : `feat(dbt)!: rename customer_id to customer_key`. Le corps décrit alors l'impact pour les consommateurs.
-
-Règles du corps :
-
-- obligatoire dès que le "pourquoi" n'est pas évident à la lecture du diff ;
-- explique la raison et le contexte, pas le détail du code ;
-- lignes de 72 caractères maximum, séparé du sujet par une ligne vide.
-
-Exemple complet :
-
-```text
-perf(dbt): switch daily orders model to incremental
-
-The full refresh scanned the whole source table on every run and
-took 40 minutes. An incremental strategy with a 3-day lookback keeps
-late-arriving rows while reducing scanned bytes.
-```
+- Types : `feat`, `fix`, `refactor` (sans changement de comportement), `perf`, `test`, `docs`, `ci`, `chore` (dépendances, configuration, outillage), `revert`.
+- Scopes : `dbt`, `meltano`, `terraform`, `ci`, `docs`. Optionnel si le changement est transverse.
+- Sujet en anglais, à l'impératif présent, 72 caractères maximum, sans majuscule initiale ni point final. Il décrit l'effet du changement, pas l'activité (`fix null handling in customer join`, pas `update model`).
+- `!` avant les deux-points si le changement casse un contrat pour un consommateur (colonne de mart renommée ou supprimée, variable Terraform modifiée). Le corps décrit alors l'impact.
+- Corps obligatoire dès que le pourquoi n'est pas évident à la lecture du diff : la raison et le contexte, pas le détail du code. Lignes de 72 caractères maximum.
 
 ## Contenu d'un commit
 
 - Un commit = un changement logique, qui laisse le projet dans un état cohérent. Ne pas mélanger refactoring et changement fonctionnel.
-- Ajouter les fichiers explicitement (`git add <chemin>`). Ne pas utiliser `git add .` ni `git add -A`.
-- Avant chaque commit, relire `git status` et `git diff --staged`.
-- Ne jamais committer : secrets (`.env`, clés de service account, `*.tfvars` contenant des valeurs sensibles), state Terraform (`*.tfstate`, `.terraform/`), artefacts générés (`target/`, `dbt_packages/`, `logs/`, `.meltano/`).
-- `.terraform.lock.hcl` et `package-lock.yml` (dbt) sont versionnés : ils garantissent des versions identiques pour tous.
+- Ajouter les fichiers explicitement (`git add <chemin>`), jamais `git add .` ni `git add -A`. Relire `git status` et `git diff --staged` avant chaque commit.
+- Ne jamais committer : secrets (`.env`, clés, `*.tfvars` sensibles), state Terraform (`*.tfstate`, `.terraform/`), artefacts générés (`target/`, `dbt_packages/`, `logs/`, `.meltano/`).
+- `.terraform.lock.hcl` et `package-lock.yml` (dbt) sont versionnés.
 
 ## Historique
 
-- Mettre sa branche à jour par rebase sur `main` tant qu'elle n'est pas partagée : l'historique reste linéaire et lisible.
-
-```bash
-git fetch origin
-git rebase origin/main
-```
-
-- Ne jamais réécrire un historique déjà partagé (`rebase`, `commit --amend`, `reset`) sur `main` ou sur la branche de quelqu'un d'autre.
-- Pour annuler un commit déjà publié : `git revert`, qui crée un commit inverse sans toucher à l'historique.
-- Si un push forcé est nécessaire sur sa propre branche : `git push --force-with-lease`, jamais `--force`. La première forme échoue si quelqu'un a poussé entre-temps, la seconde écrase son travail.
-
-## Commandes modernes
-
-- Préférer `git switch` à `git checkout` pour changer de branche.
-- Préférer `git restore` à `git checkout` pour restaurer des fichiers.
+- Mettre sa branche à jour par rebase sur `origin/main` tant qu'elle n'est pas partagée.
+- Ne jamais réécrire un historique partagé. Pour annuler un commit publié : `git revert`.
+- Push forcé sur sa propre branche : `--force-with-lease`, jamais `--force`.
+- Préférer `git switch` et `git restore` à `git checkout`.
 
 ## Garde-fous pour l'agent
 
@@ -120,7 +48,7 @@ Interdit, même sur demande implicite :
 
 - committer ou pousser sur `main` ;
 - `git push --force` (utiliser `--force-with-lease` après confirmation) ;
-- `--no-verify`, qui contourne les hooks : si un hook échoue, corriger la cause ;
+- `--no-verify` : si un hook échoue, corriger la cause ;
 - modifier la configuration Git (`git config`) ou les hooks du dépôt ;
 - ajouter une signature ou une mention d'outil dans les messages de commit.
 

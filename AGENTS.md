@@ -11,7 +11,7 @@ Pipeline ELT d'offres d'emploi (API France Travail → GCS → BigQuery → dbt)
 | `loading/` | `load.sh` : GCS → `raw.france_travail_offers` (`bq load`, APPEND) | ci-dessous |
 | `dbt/` | Transformations BigQuery (dbt Fusion) | [dbt.md](.continue/rules/dbt.md) |
 | `enrichment/`, `oracle/`, `orchestration/` | Vides (`.gitkeep`), à venir | |
-| `.github/workflows/` | Collecte quotidienne en prod, test WIF | |
+| `.github/workflows/` | Collecte quotidienne en prod, test WIF | [github_actions.md](.continue/rules/github_actions.md) |
 
 ## Environnements
 
@@ -44,8 +44,8 @@ export TAP_FRANCETRAVAIL_CLIENT_ID=... TAP_FRANCETRAVAIL_CLIENT_SECRET=...
 ## Règles par outil
 
 - Les règles sont dans [.continue/rules/](.continue/rules/), lu nativement par Continue. `.claude/rules` est un lien symbolique vers ce dossier, et `CLAUDE.md` se limite à importer ce fichier : Claude Code et Continue lisent les mêmes fichiers.
-- `git.md` et `github.md` sont toujours chargées. Les autres ne le sont que lorsqu'un fichier de leur périmètre est en jeu : chaque règle à périmètre porte la même liste sous deux clés, `paths:` (Claude Code) et `globs:` (Continue), à garder identiques.
-- Une règle réunit les conventions d'un outil et ce qui est propre à ce dépôt pour cet outil. Ce fichier ne garde que le transverse : ne pas y recopier une règle.
+- `git.md` et `github.md` sont toujours chargées. Les autres, dont `github_actions.md` pour `.github/`, ne le sont que lorsqu'un fichier de leur périmètre est en jeu : chaque règle à périmètre porte la même liste sous deux clés, `paths:` (Claude Code) et `globs:` (Continue), à garder identiques.
+- Une règle ne contient que ce qui est propre à ce dépôt, s'écarte de la convention de l'outil ou sert de garde-fou : les conventions courantes, que les modèles connaissent, n'y sont pas recopiées. Chaque règle est injectée dans le contexte, et un modèle local en a peu. Ce fichier ne garde que le transverse : ne pas y recopier une règle.
 
 ## Conventions
 
