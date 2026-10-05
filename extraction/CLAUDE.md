@@ -16,8 +16,6 @@ Développement du tap seul : `cd taps/tap-francetravail && uv sync`, puis voir s
 
 - [meltano.yml](meltano.yml) inclut `plugins/**/*.meltano.yml` et `environments/*.meltano.yml`.
 - Les requêtes de recherche (`search_queries`) et le bucket cible sont définis par environnement dans `environments/` : liste réduite en dev, complète en prod. Garder les deux fichiers symétriques en structure.
-- Identifiants API : `TAP_FRANCETRAVAIL_CLIENT_ID` / `TAP_FRANCETRAVAIL_CLIENT_SECRET` en variables d'environnement.
-- Le state Meltano est stocké dans `gs://<projet>-meltano-state/state` (défini par `run.sh`).
 
 ## Points d'attention du tap
 
