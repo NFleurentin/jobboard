@@ -1,5 +1,6 @@
 variable "project_id" {
-  type = string
+  type        = string
+  description = "ID du projet GCP qui héberge le pool WIF et les service accounts"
 }
 
 variable "github_repository" {
@@ -13,6 +14,7 @@ variable "sa_environment" {
 }
 
 variable "pool_id" {
-  type    = string
-  default = "github"
+  type        = string
+  description = "Identifiant du pool Workload Identity Federation"
+  default     = "github"
 }
