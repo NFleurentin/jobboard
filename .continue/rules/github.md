@@ -1,6 +1,16 @@
 # Règles GitHub
 
-Ces règles couvrent les pull requests, la stratégie de merge, la protection de `main` et les commandes `gh`. Les workflows et le déploiement sont dans `github_actions.md`, les branches et commits dans `git.md`.
+Ces règles couvrent les issues, les pull requests, la stratégie de merge, la protection de `main` et les commandes `gh`. Les workflows et le déploiement sont dans `github_actions.md`, les branches et commits dans `git.md`.
+
+## Issues
+
+Une issue = un problème. Les écarts mineurs d'un même outil se regroupent dans une seule issue, avec une case à cocher par écart.
+
+- Titre en anglais, pour partager le vocabulaire de la PR et du commit qui la traiteront. Il décrit le problème, pas la solution : pas de type Conventional Commits, les labels en tiennent lieu.
+- Préfixe de scope entre crochets, parmi les scopes de `git.md` (`[dbt] Snapshot run without a new partition closes every offer`). Il est omis si le problème est transverse.
+- Description en français, en quatre sections : Constat (fichiers et lignes), Impact, Pistes, Critères de fin (cases à cocher). Ce qui reste à confirmer est signalé comme hypothèse.
+- Labels existants uniquement : `bug`, `enhancement`, `documentation`, `question`.
+- La PR qui la traite la référence dans sa description (`Closes #<numéro>`).
 
 ## Pull requests
 
@@ -29,7 +39,7 @@ Autorisé sans confirmation, en lecture seule : `gh pr view`, `gh pr list`, `gh 
 
 Demander une confirmation explicite avant :
 
-- `gh pr create` : proposer d'abord le titre et la description ;
+- `gh issue create` et `gh pr create` : proposer d'abord le titre et la description ;
 - tout commentaire, review ou changement d'état sur une PR ou une issue ;
 - `gh pr merge` ;
 - `gh workflow run` et `gh run rerun`.
