@@ -1,5 +1,6 @@
 locals {
-  raw_retention_days = var.env == "dev" ? 7 : 30
+  is_dev             = var.env == "dev"
+  raw_retention_days = local.is_dev ? 7 : 30
 }
 
 # ---------- Buckets ----------
@@ -8,7 +9,7 @@ resource "google_storage_bucket" "raw" {
   location                    = var.location
   uniform_bucket_level_access = true
   public_access_prevention    = "enforced"
-  force_destroy               = var.env == "dev"
+  force_destroy               = local.is_dev
 
   lifecycle_rule {
     condition {
@@ -25,7 +26,7 @@ resource "google_storage_bucket" "enriched" {
   location                    = var.location
   uniform_bucket_level_access = true
   public_access_prevention    = "enforced"
-  force_destroy               = var.env == "dev"
+  force_destroy               = local.is_dev
 }
 
 resource "google_storage_bucket" "meltano_state" {
@@ -44,7 +45,7 @@ resource "google_storage_bucket" "meltano_state" {
 resource "google_bigquery_dataset" "raw" {
   dataset_id                 = "raw"
   location                   = var.location
-  delete_contents_on_destroy = var.env == "dev"
+  delete_contents_on_destroy = local.is_dev
 }
 
 resource "google_bigquery_dataset" "meta" {
@@ -61,7 +62,7 @@ resource "google_bigquery_table" "state_snapshot" {
     { name = "last_ingest", type = "TIMESTAMP", mode = "REQUIRED" },
   ])
 
-  deletion_protection = var.env != "dev"
+  deletion_protection = !local.is_dev
 }
 
 # ---------- Service accounts ----------
