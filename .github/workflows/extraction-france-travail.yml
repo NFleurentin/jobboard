@@ -12,6 +12,11 @@ on:
         default: dev # un lancement manuel utilisera l'environnement dev par défaut
         required: true
 
+concurrency:
+  group: france-travail-get-offers
+  cancel-in-progress: false
+  queue: max
+
 permissions:
   contents: read
   id-token: write # requis pour obtenir le jeton OIDC (Workload Identity Federation)
@@ -19,6 +24,8 @@ permissions:
 jobs:
   extract-and-load:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
     # Seul un lancement manuel avec environment=dev cible dev ; le schedule (input vide) va en prod.
     # prod-collect : limité à sa-extract et à la branche main, sans approbation manuelle.
     environment: ${{ inputs.environment == 'dev' && 'dev' || 'prod-collect' }}

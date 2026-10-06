@@ -8,6 +8,7 @@ permissions:
 jobs:
   dev:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     environment: dev
     steps:
       - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
@@ -22,6 +23,7 @@ jobs:
   prod:
     needs: dev
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     environment: prod # approbation manuelle exigée
     steps:
       - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
