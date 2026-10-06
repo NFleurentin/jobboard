@@ -2,7 +2,8 @@ plugins:
   loaders:
     - name: target-gcs
       variant: datateer
-      pip_url: git+https://github.com/Datateer/target-gcs.git setuptools<82
+      # tag v1.2.3, épinglé par SHA ; dépendances figées par constraints/target-gcs.txt
+      pip_url: git+https://github.com/Datateer/target-gcs.git@046cb02b9744c030663163078a32b2144feaefa4 setuptools<82 -c constraints/target-gcs.txt
       settings:
         - name: credentials_file # supprime le défaut hérité du Hub, sans lui donner de valeur
       config:

@@ -114,7 +114,10 @@ export MELTANO_ENVIRONMENT=dev   # ou prod
 export GCP_PROJECT_ID="jobboard-${MELTANO_ENVIRONMENT}-3b375b"
 export INGESTED_AT=$(date -u +%Y%m%dT%H%M%SZ)
 
-cd extraction && ./run.sh
+cd extraction
+uv sync --frozen && source .venv/bin/activate     # Python et Meltano aux versions figées
+meltano --environment="$MELTANO_ENVIRONMENT" install
+./run.sh
 ```
 
 `run.sh` pointe le state Meltano vers le bucket GCS de l'environnement choisi, puis lance `tap-francetravail` → `target-gcs`. Aucune clé n'est nécessaire : l'authentification GCP passe par l'impersonation de `sa-extract` en local, et par Workload Identity Federation une fois exécuté depuis GitHub Actions.
@@ -196,6 +199,7 @@ orchestration/  Orchestration Airflow (à venir)
 | Garde-fou du snapshot dans la macro qui choisit le jour à traiter, avec un seuil de volume relatif au jour précédent (`france_travail_offers_min_volume_ratio`) | `hard_deletes: invalidate` clôt toute offre absente de la source : un jour vide ou partiel fermerait à tort des milliers d'offres dans un historique irremplaçable. Le contrôle s'exécute avec `dbt snapshot` seul, sans test à lancer avant, et le ratio suit le volume du marché sans réglage | test dbt de volume sur la source (non exécuté par `dbt snapshot`), seuil absolu en `var` (à réajuster quand le marché ou `search_queries` évolue) |
 | Coordonnées de contact gardées en staging, exclues à partir de `int_offers` | utiles pour postuler (usage personnel), sans fuite vers les marts ou un dashboard public | masquage dès l'extraction (perte d'une information utile) |
 | `sa-extract` gère aussi le chargement BigQuery | droits déjà accordés sur `raw` dès la mise en place de la plateforme ; ce compte est responsable de toute la zone d'atterrissage, pas seulement du fichier GCS | un service account de chargement séparé |
+| Toutes les dépendances de la collecte figées : Python et Meltano par `uv.lock`, plugins par SHA ou version exacte dans `pip_url`, leurs dépendances transitives par un fichier de contraintes (`extraction/constraints/`), `dbt_utils` en version exacte | la collecte de prod tourne seule chaque jour avec accès à GCS et BigQuery : une version publiée en amont (casse ou paquet compromis) ne doit pas l'atteindre sans passer par une PR. Coût : régénérer locks et contraintes à chaque montée de version | versions flottantes ou plages (casse possible sans changement du dépôt), figer le seul niveau direct (dépendances transitives toujours flottantes) |
 | Règles des assistants IA dans `.continue/rules/`, `.claude/rules` en lien symbolique, `AGENTS.md` à la racine importé par `CLAUDE.md` | une seule source lue nativement par Claude Code et Continue (LLM local) ; chaque règle porte `paths:` et `globs:` pour n'être chargée que sur son périmètre | `uses:` dans l'agent Continue (chemins relatifs cassés par un bug de Continue), un CLAUDE.md par sous-dossier (ignoré par Continue) |
 
 **Laissé de côté volontairement :** environnement de recette, orchestrateur managé, GPU cloud, Secret Manager.

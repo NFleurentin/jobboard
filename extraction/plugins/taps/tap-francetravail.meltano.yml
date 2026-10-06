@@ -2,7 +2,7 @@ plugins:
   extractors:
   - name: tap-francetravail
     namespace: tap_francetravail
-    pip_url: -e ./taps/tap-francetravail
+    pip_url: -e ./taps/tap-francetravail -c constraints/tap-francetravail.txt # généré depuis le uv.lock du tap
     executable: tap-francetravail
     capabilities:
     - catalog
