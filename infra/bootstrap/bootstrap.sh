@@ -13,14 +13,11 @@ LOCATION="${LOCATION:-europe-west1}"
 APIS=(
   bigquery.googleapis.com # Entrepôt de données analytique
   storage.googleapis.com # Stockage brut et bucket Terraform
-  secretmanager.googleapis.com # Gestion des secrets
   iam.googleapis.com # Créer et gérer des service accounts
   iamcredentials.googleapis.com # Générer des jetons temporaires
   sts.googleapis.com # Echange du jeton GitHub contre un accès GCP (WIF)                 
   cloudresourcemanager.googleapis.com # Terraform l'utilise pour lire l'état des APIs
   serviceusage.googleapis.com # Terraform nécessite cette API pour gérer les services Google Cloud
-  artifactregistry.googleapis.com # Stocke les images Docker et autres artefacts
-  run.googleapis.com # Execute les conteneurs sur Cloud Run (LLM, Meltano)
 )
 
 echo "Compte actif : $(gcloud config get-value account 2>/dev/null)"
