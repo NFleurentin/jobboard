@@ -1,0 +1,8 @@
+[project]
+name = "extraction"
+version = "0.1.0"
+description = "Projet Meltano d'extraction des données"
+requires-python = ">=3.12"
+dependencies = [
+    "meltano[gcs]==4.4.0",
+]

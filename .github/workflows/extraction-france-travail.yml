@@ -24,19 +24,23 @@ jobs:
           echo "GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID }}" >> "$GITHUB_ENV"
           echo "INGESTED_AT=$(date -u +%Y%m%dT%H%M%SZ)" >> "$GITHUB_ENV"
 
+      # Installation avant l'authentification GCP : le code téléchargé ne voit pas les credentials
+      - name: Installer uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.11.17"
+
+      - name: Installer Python et Meltano (versions figées par .python-version et uv.lock)
+        working-directory: extraction
+        run: |
+          uv sync --frozen
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+
       - name: Authentification GCP (Workload Identity Federation)
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
           service_account: ${{ vars.EXTRACT_SA }}
-
-      - name: Installer Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Installer Meltano (avec support GCS pour le state)
-        run: pip install "meltano[gcs]"
 
       - name: Installer les plugins Meltano (tap et target)
         working-directory: extraction

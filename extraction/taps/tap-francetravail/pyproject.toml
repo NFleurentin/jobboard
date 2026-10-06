@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Singer tap pour l'API Offres d'emploi de France Travail"
 requires-python = ">=3.12"
 dependencies = [
-    "singer-sdk~=0.54.5",
+    "singer-sdk==0.54.6",
 ]
 
 [project.scripts]

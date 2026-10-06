@@ -26,7 +26,7 @@ Ces règles couvrent l'extraction avec Meltano : configuration, plugins, secrets
 ## Commandes
 
 ```bash
-pip install "meltano[gcs]"                      # [gcs] requis pour le state distant
+uv sync --frozen && source .venv/bin/activate   # Meltano figé par pyproject.toml et uv.lock
 meltano --environment=dev install               # installe le tap en mode éditable (pip_url: -e)
 ./run.sh                                        # seul point d'entrée d'une extraction
 ```
@@ -36,6 +36,7 @@ Développement du tap seul : `cd taps/tap-francetravail && uv sync`, puis voir `
 ## Plugins
 
 - Version fixée dans `pip_url` (numéro, tag ou SHA de commit pour une installation depuis Git), `variant` explicite.
+- Dépendances transitives figées par `-c constraints/<plugin>.txt` dans `pip_url`. Ces fichiers sont générés, jamais édités à la main : `uv export --frozen --no-dev --no-emit-project --no-hashes --no-header -o ../../constraints/tap-francetravail.txt` depuis le tap, `uv pip compile` pour un plugin externe. Les régénérer à chaque changement de version.
 - Sélection explicite des streams et des champs avec `select`, jamais `*.*`.
 - Méthode et clé de réplication dans le fichier du plugin (`metadata`), pas dans les fichiers d'environnement.
 - Chaque setting d'un plugin personnalisé déclare son `kind`, et `sensitive: true` pour un secret.
