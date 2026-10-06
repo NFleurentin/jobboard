@@ -74,7 +74,7 @@ source raw.france_travail_offers
 ## Snapshots
 
 - Le snapshot des offres a deux rôles : suivre les évolutions d'une offre, et détecter sa clôture. Une offre absente de la dernière extraction est considérée comme close.
-- La détection de clôture suppose une extraction complète. Après une extraction partielle, toutes les offres manquantes seraient marquées closes à tort, puis rouvertes au run suivant. Un test de volume sur la source bloque donc le snapshot quand la dernière partition est anormalement petite.
+- La détection de clôture suppose une extraction complète. Après une extraction partielle, toutes les offres manquantes seraient marquées closes à tort, puis rouvertes au run suivant. La macro `target_ingested_at_france_travail_offers` fait donc échouer le snapshot, avant toute écriture, quand aucun jour n'est à traiter, quand le jour ciblé est vide, ou quand son volume passe sous `france_travail_offers_min_volume_ratio` fois celui du jour de référence. Ce n'est pas un test dbt : `dbt snapshot` seul n'en exécuterait aucun. Après une baisse assumée, forcer le run avec cette var à `0` dans `--vars`.
 - Elle suppose aussi un périmètre de recherche constant : retirer ou modifier un critère de `search_queries` dans Meltano fait passer pour closes les offres qui sortent du périmètre.
 - La date de clôture est déduite, pas fournie par la source : c'est la date du premier run où l'offre est absente. La colonne et sa description le disent explicitement.
 - Une offre close peut réapparaître : les modèles en aval gèrent ce cas au lieu de supposer qu'une clôture est définitive.
