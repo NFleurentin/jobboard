@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 from datetime import UTC, datetime
 from functools import cached_property
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, override
 
 from singer_sdk import SchemaDirectory, StreamSchema
 from singer_sdk.helpers.jsonpath import extract_jsonpath
@@ -16,11 +15,6 @@ from singer_sdk.streams import RESTStream
 from tap_francetravail import schemas
 from tap_francetravail.auth import FranceTravailAuthenticator
 from tap_francetravail.paginator import FranceTravailPaginator
-
-if sys.version_info >= (3, 12):
-    from typing import override
-else:
-    from typing_extensions import override
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

@@ -2,14 +2,9 @@
 
 from __future__ import annotations
 
-import sys
+from typing import override
 
 from singer_sdk.authenticators import OAuthAuthenticator, SingletonMeta
-
-if sys.version_info >= (3, 12):
-    from typing import override
-else:
-    from typing_extensions import override
 
 
 # The SingletonMeta metaclass makes your streams reuse the same authenticator instance.
