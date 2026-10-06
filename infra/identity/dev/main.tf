@@ -11,16 +11,16 @@ module "github_wif" {
   github_repository = var.github_repository
 
   sa_environment = {
-  deployer = "dev"
-  dbt      = "dev"
-  extract  = "dev"
-}
+    deployer = "dev"
+    dbt      = "dev"
+    extract  = "dev"
+  }
 }
 
 output "github_variables" {
   value = {
-    GCP_PROJECT_ID = var.project_id
-    WIF_PROVIDER   = module.github_wif.workload_identity_provider
+    GCP_PROJECT_ID   = var.project_id
+    WIF_PROVIDER     = module.github_wif.workload_identity_provider
     service_accounts = module.github_wif.service_accounts
   }
 }

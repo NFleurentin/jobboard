@@ -18,11 +18,11 @@ locals {
   }
 
   deployer_roles = toset([
-    "roles/storage.admin",                       # buckets, y compris le bucket de state
-    "roles/bigquery.dataOwner",                  # datasets et leur IAM
-    "roles/iam.serviceAccountAdmin",             # créer les service accounts et leur IAM
-    "roles/resourcemanager.projectIamAdmin",     # IAM au niveau du projet
-    "roles/serviceusage.serviceUsageConsumer",   # user_project_override du provider
+    "roles/storage.admin",                     # buckets, y compris le bucket de state
+    "roles/bigquery.dataOwner",                # datasets et leur IAM
+    "roles/iam.serviceAccountAdmin",           # créer les service accounts et leur IAM
+    "roles/resourcemanager.projectIamAdmin",   # IAM au niveau du projet
+    "roles/serviceusage.serviceUsageConsumer", # user_project_override du provider
   ])
 }
 

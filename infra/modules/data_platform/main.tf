@@ -61,7 +61,7 @@ resource "google_bigquery_table" "state_snapshot" {
     { name = "last_ingest", type = "TIMESTAMP", mode = "REQUIRED" },
   ])
 
-  deletion_protection = false
+  deletion_protection = var.env != "dev"
 }
 
 # ---------- Service accounts ----------
@@ -95,7 +95,7 @@ resource "google_storage_bucket_iam_member" "extract_raw_read" {
 
 resource "google_storage_bucket_iam_member" "extract_raw_legacy_reader" {
   bucket = google_storage_bucket.raw.name
-  role   = "roles/storage.legacyBucketReader"   # storage.buckets.get, storage.buckets.list
+  role   = "roles/storage.legacyBucketReader" # storage.buckets.get, storage.buckets.list
   member = "serviceAccount:${google_service_account.extract.email}"
 }
 
