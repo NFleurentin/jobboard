@@ -1,10 +1,12 @@
 variable "project_id" {
-  type = string
+  type        = string
+  description = "ID du projet GCP de l'environnement"
 }
 
 variable "region" {
-  type    = string
-  default = "europe-west1"
+  type        = string
+  description = "Région GCP par défaut du provider et des ressources de la plateforme"
+  default     = "europe-west1"
 }
 
 variable "user_email" {

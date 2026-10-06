@@ -6,11 +6,17 @@ variable "project_id" {
 variable "env" {
   type        = string
   description = "dev ou prod"
+
+  validation {
+    condition     = contains(["dev", "prod"], var.env)
+    error_message = "env doit valoir \"dev\" ou \"prod\"."
+  }
 }
 
 variable "location" {
-  type    = string
-  default = "europe-west1"
+  type        = string
+  description = "Région GCP des buckets et des datasets"
+  default     = "europe-west1"
 }
 
 variable "user_email" {
