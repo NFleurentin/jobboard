@@ -63,7 +63,8 @@ cd infra/envs/dev && terraform init && terraform plan
 - Uniquement `google_*_iam_member`. Les variantes `_iam_policy` et `_iam_binding` sont autoritaires : elles suppriment les droits existants qu'elles ne déclarent pas, et peuvent couper l'accès à un projet.
 - Aucune `google_service_account_key`. L'accès humain passe par `roles/iam.serviceAccountTokenCreator` sur `var.user_email` (impersonation).
 - Mapping service account → GitHub Environment dans `identity/<env>/main.tf` (`sa_environment`) : en prod, `extract` est lié à `prod-collect` (sans approbation), `deployer` et `dbt` à `prod` (approbation manuelle).
-- Le dev est jetable : `force_destroy` et `delete_contents_on_destroy` y sont activés par `var.env`, et désactivés en prod. `prevent_destroy` n'accepte pas de variable : dans un module partagé, il bloquerait aussi la destruction du dev. La prod repose donc sur l'absence d'apply local et sur la lecture du plan.
+- Le dev est jetable : `force_destroy` et `delete_contents_on_destroy` y sont activés par `var.env`, et désactivés en prod. `prevent_destroy` n'accepte pas de variable : dans un module partagé, il bloquerait aussi la destruction du dev. La prod repose donc sur l'absence d'apply local, sur la lecture du plan et, pour les tables déclarées dans Terraform, sur `deletion_protection` activé hors dev.
+- `deletion_protection` n'agit que dans Terraform (destroy ou remplacement) : il ne bloque ni `bq rm` ni un `DROP TABLE`. Pour remplacer volontairement une table protégée, désactiver la protection dans un premier apply, puis appliquer le changement.
 
 ## Plan
 

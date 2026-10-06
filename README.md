@@ -67,6 +67,7 @@ Deux environnements isolés, **un projet GCP chacun**. Le code est identique, se
 | Rôle | bac à sable jetable, périmètre réduit | données réelles, déploiement sur approbation |
 | Rétention du brut | 7 jours | 30 jours |
 | Destruction des buckets | autorisée (`force_destroy`) | non |
+| Suppression de `meta.state_snapshot` par Terraform | autorisée | bloquée (`deletion_protection`) |
 | Déploiement | automatique | approbation manuelle, branche `main` uniquement |
 
 Ce que l'infrastructure crée dans chaque projet :
@@ -184,6 +185,7 @@ orchestration/  Orchestration Airflow (à venir)
 | Terraform avec state distant dans GCS | état partagé entre mon poste et la CI | state local |
 | Bucket de state versionné (activé par `bootstrap.sh`) | filet de sécurité quasi gratuit pour un fichier de quelques Ko : un state corrompu ou écrasé se restaure | bucket sans versioning |
 | `identity/` séparé de `envs/` | la CI ne peut pas modifier sa propre porte d'entrée, et détruire le dev n'entraîne pas la perte du pool WIF | tout dans un seul state |
+| `deletion_protection` sur `meta.state_snapshot` hors dev | la table porte le marqueur du dernier jour snapshoté ; perdue lors d'un destroy ou d'un remplacement (changement de schéma), le snapshot suivant repartirait de la plus ancienne partition du brut et fausserait l'historique | `prevent_destroy` (n'accepte pas de variable, bloquerait aussi le dev), aucune protection |
 | Impersonation et Workload Identity Federation | aucune clé JSON à stocker ou à faire tourner, jetons de courte durée | clés de service accounts |
 | Un service account par usage | moindre privilège : l'extraction ne peut pas modifier les modèles, dbt ne peut pas écraser le brut | un compte unique |
 | LLM exécuté en local | aucun coût GPU cloud, données non envoyées à un prestataire | Cloud Run avec GPU, Vertex AI |
