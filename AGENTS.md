@@ -18,7 +18,7 @@ Pipeline ELT d'offres d'emploi (API France Travail → GCS → BigQuery → dbt)
 - Deux projets GCP : `jobboard-dev-3b375b` et `jobboard-prod-3b375b`, région unique `europe-west1`. Les ressources sont nommées `<projet>-raw`, `<projet>-enriched`, `<projet>-meltano-state`, `<projet>-tfstate`.
 - Travailler en **dev**. L'agent ne lance **jamais** de commande visant la prod depuis le poste local (`terraform plan`/`apply` dans `envs/prod` ou `identity/prod`, `run.sh`/`load.sh` ou dbt avec le projet de prod) : la prod passe par la CI. Les opérations qui n'ont pas de CI (`bootstrap.sh`, `identity/prod`) sont lancées à la main par le propriétaire du dépôt.
 - Sur dev, toute commande qui écrit ou peut coûter (`run.sh`, `load.sh`, `terraform apply`, `dbt build`/`snapshot`, requête `bq`) demande une confirmation explicite ; le détail par outil est dans les règles.
-- La collecte de prod tourne chaque jour à 05:00 UTC via [extraction-france-travail.yml](.github/workflows/extraction-france-travail.yml), dans le GitHub Environment `prod-collect`.
+- La collecte de prod tourne chaque jour à 05:00 UTC via [extraction-france-travail.yml](.github/workflows/extraction-france-travail.yml), dans le GitHub Environment `prod-collect`. Un lancement manuel (`gh workflow run extraction-france-travail.yml --ref <branche> -f environment=dev`) exécute la collecte en dev depuis n'importe quelle branche, pour valider une modification du workflow avant le merge.
 
 ## Exécution d'un run (extraction + chargement)
 

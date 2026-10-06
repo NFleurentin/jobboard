@@ -3,7 +3,14 @@ name: Extraction France Travail
 on:
   schedule:
     - cron: "0 5 * * *" # 05:00 UTC = 07:00 (été) / 06:00 (hiver) heure de Paris
-  workflow_dispatch: # permet aussi un déclenchement manuel depuis l'onglet Actions
+  workflow_dispatch: # déclenchement manuel, depuis l'onglet Actions ou gh workflow run
+    inputs:
+      environment:
+        description: "Environnement cible"
+        type: choice
+        options: [dev, prod]
+        default: dev # un lancement manuel utilisera l'environnement dev par défaut
+        required: true
 
 permissions:
   contents: read
@@ -12,7 +19,11 @@ permissions:
 jobs:
   extract-and-load:
     runs-on: ubuntu-latest
-    environment: prod-collect # limité à sa-extract, sans approbation manuelle
+    # Seul un lancement manuel avec environment=dev cible dev ; le schedule (input vide) va en prod.
+    # prod-collect : limité à sa-extract et à la branche main, sans approbation manuelle.
+    environment: ${{ inputs.environment == 'dev' && 'dev' || 'prod-collect' }}
+    env:
+      MELTANO_ENVIRONMENT: ${{ inputs.environment == 'dev' && 'dev' || 'prod' }}
 
     steps:
       - name: Checkout
@@ -20,7 +31,6 @@ jobs:
 
       - name: Générer les identifiants du run
         run: |
-          echo "MELTANO_ENVIRONMENT=prod" >> "$GITHUB_ENV"
           echo "GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID }}" >> "$GITHUB_ENV"
           echo "INGESTED_AT=$(date -u +%Y%m%dT%H%M%SZ)" >> "$GITHUB_ENV"
 
