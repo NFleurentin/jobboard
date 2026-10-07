@@ -32,6 +32,13 @@ models:
       extraction brute, dérivation de champs composites (localisation,
       contrat, horaires, salaire), standardisation de casse, puis sélection
       finale dans un ordre de lecture pensé pour l'inspection manuelle.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: ["offer_id", "_valid_from"]
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "_valid_to IS NULL OR _valid_from < _valid_to"
     columns:
       - name: offer_id
         description: "Identifiant France Travail de l'offre."
@@ -189,8 +196,8 @@ models:
         data_tests:
           - not_null
       - name: _valid_from
-        description: "Début de validité de cette version (snapshot SCD2)."
+        description: "Début de validité de cette version : jour d'ingestion du premier run où le snapshot l'a détectée (dbt_valid_from). Ce n'est pas dateActualisation, disponible dans updated_at."
         data_tests:
           - not_null
       - name: _valid_to
-        description: "Fin de validité de cette version (NULL si toujours active)."
+        description: "Fin de validité de cette version, déduite et non fournie par la source (dbt_valid_to) : jour d'ingestion du run qui a détecté la version suivante, ou premier jour d'ingestion où l'offre est absente. NULL si la version est toujours active. Une offre close peut réapparaître : une nouvelle version commence alors au jour de sa réapparition."

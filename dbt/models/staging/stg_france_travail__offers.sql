@@ -7,6 +7,10 @@
 -- UNION DISTINCT (obligatoire en syntaxe BigQuery) : une ligne à la fois
 -- "nouvelle" et "fermée" dans une même fenêtre de rattrapage apparaîtrait
 -- dans les deux branches ; DISTINCT évite qu'elle ne fasse échouer le MERGE.
+-- Les deux marqueurs ne sont fiables que parce que le snapshot date toutes
+-- ses bornes au jour d'ingestion traité (stratégie check, issue #13), qui
+-- croît d'un run à l'autre. Avec une date fournie par la source
+-- (dateActualisation), une version antérieure au maximum serait perdue.
 --
 -- contact.* et agence.* SONT extraits ici (décision explicite, documentée
 -- dans le README) : contact.nom peut contenir un nom de recruteur, publié
@@ -23,7 +27,7 @@
 {{
     config(
         materialized='incremental',
-        unique_key=['offer_id', 'dbt_valid_from'],
+        unique_key=['offer_id', '_valid_from'],
         incremental_strategy='merge',
         on_schema_change='append_new_columns'
     )
@@ -42,7 +46,7 @@ snapshot AS (
         select * from source
         where
             dbt_valid_from > (
-                select coalesce(max(dbt_valid_from), timestamp('1970-01-01'))
+                select coalesce(max(_valid_from), timestamp('1970-01-01'))
                 from {{ this }}
             )
 
@@ -50,9 +54,9 @@ snapshot AS (
 
         select * from source
         where dbt_valid_to > (
-            select coalesce(max(dbt_valid_to), timestamp('1970-01-01'))
+            select coalesce(max(_valid_to), timestamp('1970-01-01'))
             from {{ this }}
-            where dbt_valid_to is not null
+            where _valid_to is not null
         )
 
     {% else %}

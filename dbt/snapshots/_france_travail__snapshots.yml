@@ -4,8 +4,8 @@ snapshots:
     config:
       schema: snapshots
       unique_key: offer_id
-      strategy: timestamp
-      updated_at: updated_at   # confiance faite à dateActualisation (France Travail) pour signaler tout changement pertinent
+      strategy: check
+      check_cols: ['updated_at']   # confiance faite à dateActualisation (France Travail) pour signaler tout changement pertinent
       hard_deletes: invalidate
       post_hook:
         - >
@@ -21,9 +21,16 @@ snapshots:
     description: >
       Historique SCD2 minimal des offres France Travail : garde _raw tel
       quel (STRING, pas JSON natif) à chaque version, sans extraire les
-      champs métier (voir stg_france_travail_offers). Stratégie timestamp
-      sur updated_at (dateActualisation) : une nouvelle version est créée
-      quand ce champ avance, pas sur un simple changement d'égalité. Le
+      champs métier (voir stg_france_travail_offers). Stratégie check sur
+      updated_at (dateActualisation) : une nouvelle version est créée dès
+      que ce champ change. Toutes les bornes (dbt_valid_from, dbt_valid_to
+      d'une version remplacée ou d'une offre absente) valent le jour
+      d'ingestion traité, via la macro bigquery__snapshot_get_time : une
+      seule horloge, croissante d'un run à l'autre, sans chevauchement à
+      la réouverture d'une offre (issue #13). La stratégie timestamp, qui
+      datait les versions par dateActualisation, a été écartée pour cette
+      raison ; updated_at ne doit pas être remis dans la config, la
+      stratégie check l'utiliserait comme dbt_valid_from. Le
       post_hook avance meta.state_snapshot uniquement en cas de succès.
       Filtre en "=" (pas ">") dans eph_ : hard_deletes:invalidate exige un
       instant précis ; le rattrapage de plusieurs jours se fait en bouclant
