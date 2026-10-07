@@ -19,12 +19,14 @@ concurrency:
 
 permissions:
   contents: read
-  id-token: write # requis pour obtenir le jeton OIDC (Workload Identity Federation)
 
 jobs:
   extract-and-load:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write # requis pour obtenir le jeton OIDC (Workload Identity Federation)
 
     # Seul un lancement manuel avec environment=dev cible dev ; le schedule (input vide) va en prod.
     # prod-collect : limité à sa-extract et à la branche main, sans approbation manuelle.
@@ -62,9 +64,6 @@ jobs:
       - name: Installer les plugins Meltano (tap et target)
         working-directory: extraction
         run: meltano --environment="$MELTANO_ENVIRONMENT" install
-        env:
-          TAP_FRANCETRAVAIL_CLIENT_ID: ${{ secrets.TAP_FRANCETRAVAIL_CLIENT_ID }}
-          TAP_FRANCETRAVAIL_CLIENT_SECRET: ${{ secrets.TAP_FRANCETRAVAIL_CLIENT_SECRET }}
 
       - name: Extraction
         working-directory: extraction
