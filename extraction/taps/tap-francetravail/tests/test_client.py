@@ -1,4 +1,4 @@
-"""Tests de `parse_response` sur une réponse enregistrée (données fictives)."""
+"""Tests du stream `offers` : `parse_response` sur une réponse enregistrée (données fictives) et contrôle du plafond de l'API."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from typing import Any
 
 import pytest
 import requests
+from singer_sdk.exceptions import FatalAPIError
 
 from tap_francetravail.streams import OffersStream
 from tap_francetravail.tap import TapFranceTravail
@@ -25,8 +26,8 @@ def make_response(status_code: int, content: bytes) -> requests.Response:
     return response
 
 
-def parse(response: requests.Response) -> list[dict[str, Any]]:
-    """Parse une réponse avec le stream `offers` d'un tap configuré à vide."""
+def make_stream() -> OffersStream:
+    """Stream `offers` d'un tap configuré à vide."""
     tap = TapFranceTravail(
         config={
             "client_id": "test",
@@ -35,7 +36,12 @@ def parse(response: requests.Response) -> list[dict[str, Any]]:
         },
         parse_env_config=False,
     )
-    return list(OffersStream(tap).parse_response(response))
+    return OffersStream(tap)
+
+
+def parse(response: requests.Response) -> list[dict[str, Any]]:
+    """Parse une réponse avec le stream `offers` d'un tap configuré à vide."""
+    return list(make_stream().parse_response(response))
 
 
 @pytest.fixture
@@ -90,3 +96,44 @@ def test_missing_ingested_at_fails(
 
     with pytest.raises(KeyError, match="INGESTED_AT"):
         parse(make_response(206, page))
+
+
+def make_ranged_response(
+    status_code: int, content_range: str | None
+) -> requests.Response:
+    """Réponse paginée, avec ou sans en-tête Content-Range."""
+    response = make_response(status_code, b"")
+    response.url = "https://api.example.test/offres/search?motsCles=sql&range=0-149"
+    if content_range is not None:
+        response.headers["Content-Range"] = content_range
+    return response
+
+
+@pytest.mark.parametrize(
+    ("status_code", "content_range"),
+    [
+        (206, "offres 0-149/1150"),  # pile au plafond : lisible jusqu'à 1149
+        (206, "offres 0-149/151"),
+        (200, None),  # une seule page : pas de contrôle
+        (204, None),  # aucun résultat
+    ],
+)
+def test_validate_response_accepts_query_within_cap(
+    status_code: int, content_range: str | None
+) -> None:
+    make_stream().validate_response(make_ranged_response(status_code, content_range))
+
+
+def test_validate_response_fails_above_cap() -> None:
+    response = make_ranged_response(206, "offres 0-149/1151")
+
+    with pytest.raises(FatalAPIError, match="1151 results"):
+        make_stream().validate_response(response)
+
+
+@pytest.mark.parametrize("content_range", [None, "", "offres 0-149"])
+def test_validate_response_fails_without_total(content_range: str | None) -> None:
+    response = make_ranged_response(206, content_range)
+
+    with pytest.raises(FatalAPIError, match="Content-Range"):
+        make_stream().validate_response(response)

@@ -13,4 +13,10 @@ class FranceTravailPaginator(OffsetPaginator):
         if response.status_code != 206:
             return False
 
-        return self._value + self.page_size <= self.MAX_OFFSET
+        # La page à l'offset MAX_OFFSET est la dernière autorisée par l'API
+        return self._value < self.MAX_OFFSET
+
+    def get_next(self, response: requests.Response) -> int:
+        # Pas de 150 non aligné sur 1000 (900 -> 1050, refusé par l'API) :
+        # la dernière page est ramenée à 1000-1149 et recouvre 1000-1049.
+        return min(self._value + self.page_size, self.MAX_OFFSET)

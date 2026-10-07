@@ -73,7 +73,7 @@ L'extraction France Travail est en full-refresh : son state ne sert pas de point
 - **Full-refresh volontaire** : pas de `replication_key`. L'API ne signale pas les offres fermées ; un instantané complet à chaque run permet au snapshot dbt de déduire les fermetures. Ne pas passer en incrémental.
 - **Forme des records figée** : `id`, `dateActualisation`, `_raw` (payload complet sérialisé par `json.dumps`), `_extracted_at`, `_ingested_at`. Émettre `_raw` en objet imbriqué réintroduirait le bug `Decimal` non sérialisable du target. Toute modification de cette forme impose de mettre à jour `loading/schemas/france_travail/offers_raw.json` et la source dbt.
 - `_ingested_at` est lu depuis la variable `INGESTED_AT` (format `%Y%m%dT%H%M%SZ`) ; le chemin GCS en dépend aussi : `france-travail/offers/ingested_at=<INGESTED_AT>/part-<timestamp>.jsonl`.
-- Pagination par `range` (pages de 150) : HTTP 206 signale qu'il reste des pages, et l'API plafonne à **1 150 résultats par requête**. Une requête trop large est tronquée silencieusement : préférer plusieurs requêtes ciblées.
+- Pagination par `range` (pages de 150) : HTTP 206 signale qu'il reste des pages, et l'API plafonne à **1 150 résultats par requête**. La dernière page est ramenée à `1000-1149` (l'index de début est plafonné à 1000). Une requête dont le total (`Content-Range`) dépasse ce plafond fait échouer le run (`FatalAPIError`) : la découper en requêtes plus ciblées.
 - Chaque entrée de `search_queries` est une partition exécutée indépendamment ; une même offre peut donc sortir plusieurs fois, d'où la déduplication dans dbt.
 
 ## Garde-fous pour l'agent
