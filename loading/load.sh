@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${GCP_PROJECT_ID:?GCP_PROJECT_ID doit être défini avant l'appel}"
-: "${INGESTED_AT:?INGESTED_AT doit être défini avant l'appel (export INGESTED_AT=$(date -u +%Y%m%dT%H%M%SZ))}"
+: "${GCP_PROJECT_ID:?GCP_PROJECT_ID doit être défini avant de lancer le script}"
+: "${INGESTED_AT:?INGESTED_AT doit être défini avant de lancer le script (export INGESTED_AT=\$(date -u +%Y%m%dT%H%M%SZ))}"
 
 bq load --project_id="$GCP_PROJECT_ID" --location=europe-west1 \
   --source_format=NEWLINE_DELIMITED_JSON \
