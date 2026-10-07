@@ -50,6 +50,7 @@ Ne jamais interpoler une donnée contrôlée par un tiers (titre de PR, nom de b
 
 ## Hygiène des workflows
 
+- `runs-on` avec une version d'image explicite (`ubuntu-26.04`), jamais `ubuntu-latest` : comme un tag d'action, ce label est mobile et change l'image sans PR. Dependabot ne le met pas à jour : la montée de version se fait par une PR dédiée, validée par un run manuel en dev, avant le retrait annoncé de l'image.
 - `timeout-minutes` sur chaque job : un job bloqué consomme des minutes jusqu'à la limite par défaut de 6 heures.
 - `concurrency` pour annuler les exécutions obsolètes sur une même PR, et pour empêcher deux déploiements simultanés.
 - Actions tierces limitées aux éditeurs identifiés. Pour une tâche simple, préférer quelques lignes de shell à une action inconnue.
