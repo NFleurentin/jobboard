@@ -18,3 +18,14 @@ variable "pool_id" {
   description = "Identifiant du pool Workload Identity Federation"
   default     = "github"
 }
+
+variable "allowed_ref" {
+  type        = string
+  description = "Référence Git complète seule autorisée (ex. refs/heads/main) ; null n'impose aucune restriction de branche"
+  default     = null
+
+  validation {
+    condition     = var.allowed_ref == null || startswith(coalesce(var.allowed_ref, "refs/"), "refs/")
+    error_message = "allowed_ref doit être null ou une référence complète commençant par refs/ (ex. refs/heads/main)."
+  }
+}

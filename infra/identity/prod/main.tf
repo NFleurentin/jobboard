@@ -14,6 +14,7 @@ module "github_wif" {
   source            = "../../modules/github_wif"
   project_id        = var.project_id
   github_repository = var.github_repository
+  allowed_ref       = "refs/heads/main" # défense en plus de la règle de branche des GitHub Environments
 
   sa_environment = {
     deployer = "prod" # déploiements, avec approbation manuelle
