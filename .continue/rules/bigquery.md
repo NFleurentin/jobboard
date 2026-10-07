@@ -22,7 +22,7 @@ Ces règles couvrent l'usage de BigQuery : datasets, données brutes, coût, con
 - Cette logique est portée par la macro `generate_schema_name`, et uniquement par elle. Aucun modèle ne force son dataset.
 - Pourquoi : en prod, la séparation par couche permet de donner des droits par dataset. En dev et en CI, un dataset unique se nettoie et se reconstruit d'un seul geste.
 - Conséquence : les droits par couche ne peuvent pas être validés en dev. Un changement de droits ou de `+schema` se vérifie à la lecture du plan Terraform et du SQL compilé pour le target `prod`.
-- Les consommateurs ne lisent que `marts`. Les datasets permanents (`raw`, `meta`, couches) sont créés par Terraform.
+- Les consommateurs ne lisent que `marts`. Les datasets permanents (`raw`, `meta`, et en prod `staging`, `intermediate`, `marts`, `snapshots`) sont créés par Terraform. En dev et en CI, `sa-dbt` crée son dataset unique et en devient propriétaire.
 
 ## Données brutes
 
@@ -59,7 +59,7 @@ Ces points guident les explications, et évitent de transposer des réflexes qui
 
 ## Droits et données
 
-- Droits au niveau du dataset, pas du projet. Aucun utilisateur n'écrit en prod ; en dev, on agit par impersonation de `sa-dbt`, pour tester avec les droits réels du pipeline.
+- Droits au niveau du dataset, pas du projet. Au niveau du projet, `sa-dbt` n'a que `bigquery.user` (requêtes, création de dataset) : il lit `raw` sans pouvoir l'écrire. Aucun utilisateur n'écrit en prod ; en dev, on agit par impersonation de `sa-dbt`, pour tester avec les droits réels du pipeline.
 - Le dépôt est public : ne jamais versionner de données réelles, d'export ou de résultat de requête.
 
 ## Garde-fous pour l'agent
