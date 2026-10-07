@@ -1,5 +1,18 @@
+import re
+
 import requests
 from singer_sdk.pagination import OffsetPaginator
+
+
+def parse_total(response: requests.Response) -> int | None:
+    """Total de résultats de la requête, lu dans l'en-tête Content-Range.
+
+    Format attendu : "offres 0-149/2345", le total après le "/".
+    Renvoie None si l'en-tête est absent ou illisible.
+    """
+    content_range = response.headers.get("Content-Range", "")
+    match = re.search(r"/(\d+)$", content_range)
+    return int(match.group(1)) if match else None
 
 
 class FranceTravailPaginator(OffsetPaginator):
@@ -11,6 +24,13 @@ class FranceTravailPaginator(OffsetPaginator):
         # 200 = the entire result fit in the requested range -> done
         # 206 = there are more pages (Partial Content)
         if response.status_code != 206:
+            return False
+
+        # L'API peut répondre 206 sur la page qui contient le dernier
+        # résultat : le total évite de demander une page vide au-delà.
+        # Sans total lisible, validate_response a déjà fait échouer le run.
+        total = parse_total(response)
+        if total is not None and self._value + self.page_size >= total:
             return False
 
         # La page à l'offset MAX_OFFSET est la dernière autorisée par l'API
