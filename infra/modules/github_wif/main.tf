@@ -3,7 +3,9 @@ locals {
   env_list     = join(", ", [for e in local.environments : "'${e}'"])
 
   # Seuls sont acceptés : CE dépôt ET un job déclarant l'un de ces GitHub Environments
-  condition = "assertion.repository == '${var.github_repository}' && assertion.environment in [${local.env_list}]"
+  # ET, si allowed_ref est renseigné, un job lancé depuis cette référence Git
+  ref_condition = var.allowed_ref == null ? "" : " && assertion.ref == '${var.allowed_ref}'"
+  condition     = "assertion.repository == '${var.github_repository}' && assertion.environment in [${local.env_list}]${local.ref_condition}"
 
   sa_emails = {
     deployer = google_service_account.deployer.email
