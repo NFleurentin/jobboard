@@ -1,4 +1,4 @@
-# tap-france-travail
+# tap-francetravail
 
 Tap [Meltano](https://meltano.com) / [Singer SDK](https://sdk.meltano.com) qui extrait des données depuis l'API REST de [France Travail](https://francetravail.io).
 
@@ -65,13 +65,13 @@ Crée un fichier `config.json` à la racine du projet :
 ### 2. Découvrir les streams disponibles
 
 ```bash
-uv run tap-france-travail --discover
+uv run tap-francetravail --discover
 ```
 
 Affiche le **catalogue Singer** (JSON) : la liste des streams et le schéma de chacun. Utile pour vérifier que le tap se charge correctement. Pour le sauvegarder :
 
 ```bash
-uv run tap-france-travail --discover > catalog.json
+uv run tap-francetravail --discover > catalog.json
 ```
 
 ### 3. Lancer une extraction
@@ -80,11 +80,11 @@ L'extraction exige la variable `INGESTED_AT`, l'identifiant du run reporté dans
 
 ```bash
 export INGESTED_AT=$(date -u +%Y%m%dT%H%M%SZ)
-uv run tap-france-travail --config config.json
+uv run tap-francetravail --config config.json
 ```
 
 Le tap s'authentifie, appelle l'API et écrit les messages Singer (`SCHEMA`, `RECORD`, `STATE`) sur la sortie standard. Pour inspecter le résultat plus facilement :
 
 ```bash
-uv run tap-france-travail --config config.json > output.jsonl
+uv run tap-francetravail --config config.json > output.jsonl
 ```
