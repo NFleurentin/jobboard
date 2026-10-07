@@ -21,10 +21,13 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
     import requests
-    from singer_sdk.helpers.types import Auth
+    from singer_sdk.helpers.types import Auth, Context
 
 
 SCHEMAS_DIR = SchemaDirectory(schemas)
+
+# Format de l'identifiant de run, fixé par l'appelant (run.sh)
+INGESTED_AT_FORMAT = "%Y%m%dT%H%M%SZ"
 
 # Plafond de l'API : index de début <= 3000, index de fin <= 3149
 MAX_RESULTS = 3150
@@ -54,6 +57,27 @@ class FranceTravailStream(RESTStream):
             auth_endpoint="https://entreprise.francetravail.fr/connexion/oauth2/access_token?realm=/partenaire",
             oauth_scopes=self.config.get("scope", "api_offresdemploiv2 o2dsoffre"),
         )
+
+    @cached_property
+    def ingested_at(self) -> str:
+        """Identifiant du run lu depuis `INGESTED_AT`, validé et converti une seule fois."""
+        value = os.environ.get("INGESTED_AT")
+        hint = "export INGESTED_AT=$(date -u +%Y%m%dT%H%M%SZ)"
+        if not value:
+            msg = f"INGESTED_AT is not set: the caller must define it before the run ({hint})"
+            raise ValueError(msg)
+        try:
+            parsed = datetime.strptime(value, INGESTED_AT_FORMAT)
+        except ValueError:
+            msg = f"INGESTED_AT={value!r} does not match the expected format YYYYMMDDTHHMMSSZ ({hint})"
+            raise ValueError(msg) from None
+        return parsed.replace(tzinfo=UTC).isoformat()
+
+    @override
+    def get_records(self, context: Context | None) -> Iterable[dict[str, Any]]:
+        """Valide `INGESTED_AT` avant le premier appel à l'API, puis délègue au SDK."""
+        _ = self.ingested_at
+        yield from super().get_records(context)
 
     @override
     def get_new_paginator(self) -> FranceTravailPaginator:
@@ -109,11 +133,7 @@ class FranceTravailStream(RESTStream):
                 "dateActualisation": record.get("dateActualisation"),
                 "_raw": json.dumps(record, ensure_ascii=False),  # payload brut complet
                 "_extracted_at": datetime.now(UTC).isoformat(),  # date d'extraction
-                "_ingested_at": datetime.strptime(
-                    os.environ["INGESTED_AT"], "%Y%m%dT%H%M%SZ"
-                )
-                .replace(tzinfo=UTC)
-                .isoformat(),
+                "_ingested_at": self.ingested_at,
             }
 
             yield minimal_record

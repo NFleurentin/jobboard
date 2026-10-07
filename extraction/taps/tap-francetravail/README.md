@@ -76,7 +76,10 @@ uv run tap-france-travail --discover > catalog.json
 
 ### 3. Lancer une extraction
 
+L'extraction exige la variable `INGESTED_AT`, l'identifiant du run reporté dans `_ingested_at` sur chaque enregistrement. En usage normal, `run.sh` la reçoit de l'appelant ; pour un test du tap seul, la définir à la main (le tap s'arrête avant tout appel à l'API si elle est absente ou mal formée) :
+
 ```bash
+export INGESTED_AT=$(date -u +%Y%m%dT%H%M%SZ)
 uv run tap-france-travail --config config.json
 ```
 

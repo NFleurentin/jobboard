@@ -89,13 +89,32 @@ def test_empty_response_yields_no_record(status_code: int, content: bytes) -> No
     assert parse(make_response(status_code, content)) == []
 
 
-def test_missing_ingested_at_fails(
-    page: bytes, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("value", [None, "", "2026-10-07", "20261007T050000"])
+def test_invalid_ingested_at_fails(
+    value: str | None, page: bytes, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    if value is None:
+        monkeypatch.delenv("INGESTED_AT", raising=False)
+    else:
+        monkeypatch.setenv("INGESTED_AT", value)
+
+    with pytest.raises(ValueError, match="INGESTED_AT"):
+        parse(make_response(206, page))
+
+
+def test_invalid_ingested_at_fails_before_any_request(
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv("INGESTED_AT", raising=False)
+    stream = make_stream()
 
-    with pytest.raises(KeyError, match="INGESTED_AT"):
-        parse(make_response(206, page))
+    def no_request(context: object) -> None:
+        pytest.fail("request_records ne doit pas être appelé")
+
+    monkeypatch.setattr(stream, "request_records", no_request)
+
+    with pytest.raises(ValueError, match="INGESTED_AT"):
+        next(iter(stream.get_records(None)))
 
 
 def make_ranged_response(
