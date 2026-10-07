@@ -4,20 +4,27 @@ models:
   - name: fct_offers
     description: >
       Table de faits : une ligne par offre et par version (grain hérité du
-      snapshot). Incrémental, repose sur int_offers pour rester valable si
-      une deuxième source est ajoutée. Dimensions dégénérées pour
+      snapshot), périodes de validité datées au jour de détection.
+      Incrémental, repose sur int_offers pour rester valable si une
+      deuxième source est ajoutée. Dimensions dégénérées pour
       l'instant (rome_code, work_location_city...) : à remplacer par des
       clés étrangères au fur et à mesure que de vraies tables de dimension
       sont construites.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: ["offer_key", "_valid_from"]
     columns:
       - name: offer_key
         description: "Pas unique seule sur cette table : la clé unique réelle est (offer_key, _valid_from)."
         data_tests:
           - not_null
       - name: _valid_from
+        description: "Début de validité de cette version : jour d'ingestion du premier run où elle a été détectée."
         data_tests:
           - not_null
       - name: _valid_to
+        description: "Fin de validité, déduite : jour d'ingestion du run qui a détecté la version suivante, ou premier jour d'ingestion où l'offre est absente. NULL si la version est toujours active."
       - name: created_date
         description: "DATE(created_at), pour jointure avec dim_date. Peut être NULL : created_at vient d'un SAFE_CAST sur dateCreation."
         data_tests:

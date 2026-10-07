@@ -17,8 +17,9 @@
       explicite). Contrôle ignoré sans jour de référence (premier run).
       Passer la var à 0 force le run après une baisse assumée (critère
       retiré de search_queries, par exemple).
-    Appelée deux fois par run (eph_france_travail__offers et post_hook du
-    snapshot) : le marqueur n'avance qu'à la fin, les deux appels ciblent le
+    Appelée plusieurs fois par run (eph_france_travail__offers,
+    bigquery__snapshot_get_time pour dater les clôtures, post_hook du
+    snapshot) : le marqueur n'avance qu'à la fin, tous les appels ciblent le
     même jour.
     Spécifique à cette source : source() et le nom de pipeline sont en dur.
 #}
