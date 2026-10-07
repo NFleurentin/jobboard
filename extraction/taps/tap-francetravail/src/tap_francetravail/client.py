@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 
 SCHEMAS_DIR = SchemaDirectory(schemas)
 
+
 class FranceTravailStream(RESTStream):
     """FranceTravail stream class."""
 
@@ -94,14 +95,17 @@ class FranceTravailStream(RESTStream):
 
         # Extraction des records
         for record in extract_jsonpath(self.records_jsonpath, input=payload):
-
             # On ne garde que id + dateActualisation
             minimal_record = {
                 "id": record.get("id"),
                 "dateActualisation": record.get("dateActualisation"),
                 "_raw": json.dumps(record, ensure_ascii=False),  # payload brut complet
                 "_extracted_at": datetime.now(UTC).isoformat(),  # date d'extraction
-                "_ingested_at": datetime.strptime(os.environ.get("INGESTED_AT"), "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC).isoformat()
+                "_ingested_at": datetime.strptime(
+                    os.environ.get("INGESTED_AT"), "%Y%m%dT%H%M%SZ"
+                )
+                .replace(tzinfo=UTC)
+                .isoformat(),
             }
 
             yield minimal_record
