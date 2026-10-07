@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 from datetime import UTC, datetime
 from functools import cached_property
 from typing import TYPE_CHECKING, Any, override
@@ -16,7 +15,7 @@ from singer_sdk.streams import RESTStream
 
 from tap_francetravail import schemas
 from tap_francetravail.auth import FranceTravailAuthenticator
-from tap_francetravail.paginator import FranceTravailPaginator
+from tap_francetravail.paginator import FranceTravailPaginator, parse_total
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -73,14 +72,12 @@ class FranceTravailStream(RESTStream):
         if response.status_code != 206:
             return
 
-        # Format attendu : "offres 0-149/2345", le total après le "/"
-        content_range = response.headers.get("Content-Range", "")
-        match = re.search(r"/(\d+)$", content_range)
-        if match is None:
+        total = parse_total(response)
+        if total is None:
+            content_range = response.headers.get("Content-Range", "")
             msg = f"Missing or unreadable Content-Range header ({content_range!r}) for {response.url}"
             raise FatalAPIError(msg, response)
 
-        total = int(match.group(1))
         if total > MAX_RESULTS:
             msg = (
                 f"Query returns {total} results, above the API cap of {MAX_RESULTS}: "
