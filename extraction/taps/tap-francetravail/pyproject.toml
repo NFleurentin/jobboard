@@ -11,7 +11,12 @@ dependencies = [
 tap-francetravail = "tap_francetravail.tap:TapFranceTravail.cli"
 
 [dependency-groups]
-dev = ["pytest"]
+dev = [
+    "mypy>=2.4.0",
+    "pytest",
+    "ruff>=0.16.10",
+    "types-requests>=2.33.0.20261006",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -19,3 +24,22 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tap_francetravail"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",  # Style de base (pycodestyle)
+    "F",       # Erreurs logiques (Pyflakes)
+    "I",       # Tri des imports (isort)
+    "UP",      # Modernisation du code (pyupgrade)
+    "B",       # Détection de bugs potentiels (Bugbear)
+]
+ignore = [
+    "E501",    # Longueur de ligne gérée par ruff format
+]
+
+[tool.mypy]
+strict = true
+files = ["src", "tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from typing import override
 
-from singer_sdk import Tap
+from singer_sdk import Stream, Tap
 from singer_sdk import typing as th  # JSON schema typing helpers
 
-# TODO: Import your custom stream types here:
 from tap_francetravail import streams
 
 
@@ -76,7 +75,7 @@ Allowed characters: [aA-zZ]+[0-9]+[space]+[@#$%^&+./-"]
     ).to_dict()
 
     @override
-    def discover_streams(self) -> list[streams.FranceTravailStream]:
+    def discover_streams(self) -> list[Stream]:
         """Return a list of discovered streams.
 
         Returns:

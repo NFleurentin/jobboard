@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import override
+from typing import Any, override
 
 from singer_sdk.authenticators import OAuthAuthenticator, SingletonMeta
 
@@ -13,7 +13,7 @@ class FranceTravailAuthenticator(OAuthAuthenticator, metaclass=SingletonMeta):
 
     @override
     @property
-    def oauth_request_body(self) -> dict:
+    def oauth_request_body(self) -> dict[str, Any]:
         """The OAuth request body for the FranceTravail API."""
 
         return {

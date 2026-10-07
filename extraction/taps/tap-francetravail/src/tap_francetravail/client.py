@@ -21,10 +21,10 @@ if TYPE_CHECKING:
 
     import requests
     from singer_sdk.helpers.types import Auth
-    from singer_sdk.streams.rest import HTTPRequest, PageContext
 
 
 SCHEMAS_DIR = SchemaDirectory(schemas)
+
 
 class FranceTravailStream(RESTStream):
     """FranceTravail stream class."""
@@ -37,7 +37,7 @@ class FranceTravailStream(RESTStream):
     @override
     @property
     def url_base(self) -> str:
-        """The API URL root, configurable via tap settings."""
+        """Racine de l'API Offres d'emploi v2, en dur (non configurable)."""
         return "https://api.francetravail.io/partenaire/offresdemploi/v2"
 
     @override
@@ -51,33 +51,12 @@ class FranceTravailStream(RESTStream):
             oauth_scopes=self.config.get("scope", "api_offresdemploiv2 o2dsoffre"),
         )
 
-    @property
-    @override
-    def http_headers(self) -> dict:
-        """A dictionary of HTTP headers."""
-        return {}
-
     @override
     def get_new_paginator(self) -> FranceTravailPaginator:
         return FranceTravailPaginator(start_value=0, page_size=150)
 
     @override
-    def get_http_request(self, *, page: PageContext[Any]) -> HTTPRequest:
-        """Return a request object for this stream.
-
-        Args:
-            page: An object containing the stream partition or context dictionary,
-                and the next page token if applicable.
-
-        Returns:
-            An HTTP request for this stream.
-        """
-        request = super().get_http_request(page=page)
-
-        return request
-
-    @override
-    def parse_response(self, response: requests.Response) -> Iterable[dict]:
+    def parse_response(self, response: requests.Response) -> Iterable[dict[str, Any]]:
         """Parse the response and return an iterator of result records.
 
         Args:
@@ -87,21 +66,24 @@ class FranceTravailStream(RESTStream):
             Each record from the source.
         """
         if response.status_code == 204 or not response.text.strip():
-            return []
+            return
 
         # Payload complet
         payload = response.json()
 
         # Extraction des records
         for record in extract_jsonpath(self.records_jsonpath, input=payload):
-
             # On ne garde que id + dateActualisation
             minimal_record = {
                 "id": record.get("id"),
                 "dateActualisation": record.get("dateActualisation"),
                 "_raw": json.dumps(record, ensure_ascii=False),  # payload brut complet
                 "_extracted_at": datetime.now(UTC).isoformat(),  # date d'extraction
-                "_ingested_at": datetime.strptime(os.environ.get("INGESTED_AT"), "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC).isoformat()
+                "_ingested_at": datetime.strptime(
+                    os.environ["INGESTED_AT"], "%Y%m%dT%H%M%SZ"
+                )
+                .replace(tzinfo=UTC)
+                .isoformat(),
             }
 
             yield minimal_record

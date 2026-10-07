@@ -1,0 +1,74 @@
+{
+  "resultats": [
+    {
+      "id": "000TEST1",
+      "intitule": "Data engineer (H/F)",
+      "description": "Offre fictive pour les tests du tap.",
+      "dateCreation": "2026-09-30T08:00:00.000Z",
+      "dateActualisation": "2026-10-01T09:30:00.000Z",
+      "lieuTravail": {
+        "libelle": "75 - PARIS 01",
+        "latitude": 48.86,
+        "longitude": 2.34,
+        "codePostal": "75001",
+        "commune": "75101"
+      },
+      "romeCode": "M1811",
+      "romeLibelle": "Data engineer",
+      "entreprise": {
+        "nom": "ENTREPRISE FICTIVE",
+        "entrepriseAdaptee": false
+      },
+      "typeContrat": "CDI",
+      "salaire": {
+        "libelle": "Annuel de 45000.0 Euros à 55000.0 Euros sur 12.0 mois"
+      },
+      "contact": {
+        "nom": "ENTREPRISE FICTIVE - Mme Prénom Nom",
+        "coordonnees1": "1 rue Fictive",
+        "coordonnees2": "75001 PARIS",
+        "courriel": "recrutement@example.com",
+        "telephone": "00 00 00 00 00",
+        "urlPostulation": "https://example.com/postuler"
+      },
+      "agence": {
+        "telephone": "00 00 00 00 00",
+        "courriel": "agence@example.com"
+      }
+    },
+    {
+      "id": "000TEST2",
+      "intitule": "Analytics engineer (H/F)",
+      "description": "Seconde offre fictive, avec accents : é, è, à, ç.",
+      "dateCreation": "2026-09-28T10:00:00.000Z",
+      "dateActualisation": "2026-10-02T14:15:00.000Z",
+      "lieuTravail": {
+        "libelle": "92 - NANTERRE",
+        "codePostal": "92000",
+        "commune": "92050"
+      },
+      "romeCode": "M1811",
+      "romeLibelle": "Data engineer",
+      "entreprise": {
+        "entrepriseAdaptee": false
+      },
+      "typeContrat": "CDD",
+      "salaire": {
+        "libelle": "Annuel de 40000.0 Euros sur 12.0 mois"
+      },
+      "contact": {
+        "nom": "Prénom Nom",
+        "courriel": "contact@example.com"
+      }
+    }
+  ],
+  "filtresPossibles": [
+    {
+      "filtre": "typeContrat",
+      "agregation": [
+        {"valeurPossible": "CDI", "nbResultats": 1},
+        {"valeurPossible": "CDD", "nbResultats": 1}
+      ]
+    }
+  ]
+}

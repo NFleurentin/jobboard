@@ -143,7 +143,7 @@ Lit les mêmes variables d'environnement que l'extraction (`GCP_PROJECT_ID`, `IN
 - [x] Plateforme dev en Terraform (buckets, dataset BigQuery `raw`, service accounts, IAM)
 - [X] Plateforme prod en Terraform
 - [x] Workload Identity Federation pour GitHub Actions (dev puis prod)
-- [x] Tap Meltano France Travail (développement)
+- [x] Tap Meltano France Travail (développement, tests, `ruff`, `mypy`)
 - [x] Extraction France Travail → GCS (Meltano), state distant, run.sh
 - [X] Workflow GitHub Actions planifié (collecte quotidienne)
 - [x] Chargement BigQuery (`raw.france_travail_offers`, mode APPEND, partitionné sur `_ingested_at`)

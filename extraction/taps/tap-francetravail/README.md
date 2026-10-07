@@ -15,7 +15,7 @@ Fonctionnement :
 
 ## Prérequis
 
-- Python 3.9+
+- Python 3.12 (version fixée par `.python-version`)
 - [uv](https://docs.astral.sh/uv/)
 - Un compte sur [francetravail.io](https://francetravail.io) avec une application déclarée et souscrite à l'API voulue, pour obtenir un `client_id` et un `client_secret`
 
@@ -26,6 +26,17 @@ uv sync
 ```
 
 Cette commande crée l'environnement virtuel et installe les dépendances du projet.
+
+## Qualité du code et tests
+
+```bash
+uv run ruff format    # formatage
+uv run ruff check     # lint (règles dans pyproject.toml)
+uv run mypy           # typage, en mode strict
+uv run pytest         # tests unitaires
+```
+
+Les tests n'appellent pas l'API : ils s'appuient sur des réponses enregistrées dans `tests/fixtures/`. Ces fichiers sont versionnés dans un dépôt public : les coordonnées de contact et d'agence y sont fictives (`example.com`, `00 00 00 00 00`), à remplacer avant tout ajout d'une réponse réelle.
 
 ## Tester le tap
 
