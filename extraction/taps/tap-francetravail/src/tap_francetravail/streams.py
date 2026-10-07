@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any, override
+from typing import TYPE_CHECKING, Any, override
 
 from tap_francetravail.client import FranceTravailStream
+
+if TYPE_CHECKING:
+    from singer_sdk.helpers.types import Context
 
 
 class OffersStream(FranceTravailStream):
@@ -20,11 +23,14 @@ class OffersStream(FranceTravailStream):
     replication_key = None
 
     @property
-    def partitions(self) -> list[dict]:
-        return self.config.get("search_queries", [])
+    def partitions(self) -> list[dict[str, Any]]:
+        search_queries: list[dict[str, Any]] = self.config.get("search_queries", [])
+        return search_queries
 
     @override
-    def get_url_params(self, context, next_page_token) -> dict:
+    def get_url_params(
+        self, context: Context | None, next_page_token: int | None
+    ) -> dict[str, Any]:
         params: dict[str, Any] = {}
         context = context or {}
 
