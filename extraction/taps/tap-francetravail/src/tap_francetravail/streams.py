@@ -12,6 +12,10 @@ class OffersStream(FranceTravailStream):
 
     name = "offers"
     path = "/offres/search"
+    # Clé d'une version d'offre, pas de l'offre : une offre réactualisée
+    # donne une nouvelle version. Non unique dans un run (une offre peut sortir
+    # de plusieurs search_queries) et ignorée par target-gcs (APPEND) :
+    # la déduplication et la clé d'offre (offer_id) relèvent de dbt.
     primary_keys = ("id", "dateActualisation")
     replication_key = None
 
