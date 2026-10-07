@@ -6,3 +6,5 @@ crash.log
 tfplan
 *.tfplan
 # Ne PAS ignorer .terraform.lock.hcl : il fige les versions du provider
+# ... sauf dans un module appelé, où seul le lock du module racine compte
+modules/**/.terraform.lock.hcl

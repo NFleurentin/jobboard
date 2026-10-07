@@ -43,7 +43,7 @@ cd infra/envs/dev && terraform init && terraform plan
 
 - Backend distant sur `gs://<projet>-tfstate` (créé par `bootstrap.sh`), un state par environnement. Le state contient des valeurs sensibles en clair.
 - Ne jamais modifier le state à la main. Pour renommer ou adopter une ressource, utiliser les blocs `moved` et `import` dans le code : ils sont relus en PR et visibles dans le plan.
-- Versions minimales : Terraform 1.6, provider google 6.0, fixées avec `~>`. `.terraform.lock.hcl` est versionné. Une montée de version de provider fait l'objet d'une PR dédiée.
+- Versions fixées avec `~>` dans chaque module racine : Terraform `~> 1.6`, provider google `~> 8.4`. `.terraform.lock.hcl` est versionné dans les modules racines uniquement (ignoré dans `modules/`). Une montée de version de provider fait l'objet d'une PR dédiée.
 
 ## Conventions de code
 
@@ -52,7 +52,7 @@ cd infra/envs/dev && terraform init && terraform plan
 - Noms GCP en `kebab-case` (`sa-extract`), sauf les datasets BigQuery en `snake_case`. Buckets nommés `<project_id>-<usage>`.
 - Chaque variable a un `type`, une `description`, et une `validation` quand les valeurs sont limitées. Chaque output a une `description`.
 - Aucun identifiant en dur (projet, région, email) : variables ou `locals`.
-- Labels `env` et `managed_by = "terraform"` sur toutes les ressources qui les acceptent.
+- Labels `env` et `managed_by = "terraform"` sur toutes les ressources qui les acceptent, posés par `default_labels` dans le bloc `provider` de chaque module racine (pas de `labels` répétés dans les modules).
 - `terraform fmt -recursive` et `terraform validate` passent avant chaque commit.
 
 ## Sécurité
