@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import UTC, datetime
 from functools import cached_property
 from typing import TYPE_CHECKING, Any, override
 
 from singer_sdk import SchemaDirectory, StreamSchema
+from singer_sdk.exceptions import FatalAPIError
 from singer_sdk.helpers.jsonpath import extract_jsonpath
 from singer_sdk.streams import RESTStream
 
@@ -24,6 +26,9 @@ if TYPE_CHECKING:
 
 
 SCHEMAS_DIR = SchemaDirectory(schemas)
+
+# Plafond de l'API : index de début <= 3000, index de fin <= 3149
+MAX_RESULTS = 3150
 
 
 class FranceTravailStream(RESTStream):
@@ -54,6 +59,34 @@ class FranceTravailStream(RESTStream):
     @override
     def get_new_paginator(self) -> FranceTravailPaginator:
         return FranceTravailPaginator(start_value=0, page_size=150)
+
+    @override
+    def validate_response(self, response: requests.Response) -> None:
+        """Échoue si le total d'une requête dépasse le plafond de l'API.
+
+        Au-delà de 3 150 résultats, l'API ne renvoie pas la suite : une requête
+        tronquée fausserait le snapshot dbt (offres non lues marquées closes).
+        Seules les 206 sont contrôlées : une 200 ou une 204 tient en une page.
+        """
+        super().validate_response(response)
+
+        if response.status_code != 206:
+            return
+
+        # Format attendu : "offres 0-149/2345", le total après le "/"
+        content_range = response.headers.get("Content-Range", "")
+        match = re.search(r"/(\d+)$", content_range)
+        if match is None:
+            msg = f"Missing or unreadable Content-Range header ({content_range!r}) for {response.url}"
+            raise FatalAPIError(msg, response)
+
+        total = int(match.group(1))
+        if total > MAX_RESULTS:
+            msg = (
+                f"Query returns {total} results, above the API cap of {MAX_RESULTS}: "
+                f"split it into narrower search_queries ({response.url})"
+            )
+            raise FatalAPIError(msg, response)
 
     @override
     def parse_response(self, response: requests.Response) -> Iterable[dict[str, Any]]:
