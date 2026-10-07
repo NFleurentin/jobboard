@@ -20,7 +20,7 @@ Ces règles couvrent l'infrastructure GCP décrite avec Terraform : organisation
 | Dossier | Rôle | Prefix de state |
 |---|---|---|
 | `infra/bootstrap/bootstrap.sh` | Projets, facturation, APIs, bucket tfstate (gcloud, rejouable) | — |
-| `infra/modules/data_platform` | Buckets `raw`/`enriched`/`meltano-state`, datasets `raw` et `meta` (avec `meta.state_snapshot`), SA `sa-extract`/`sa-dbt`/`sa-enrich`, IAM | — |
+| `infra/modules/data_platform` | Buckets `raw`/`enriched`/`meltano-state`, datasets `raw` et `meta` (avec `meta.state_snapshot`), datasets des couches dbt (prod), SA `sa-extract`/`sa-dbt`/`sa-enrich`, IAM | — |
 | `infra/modules/github_wif` | Pool WIF, `sa-deployer`, liaison service account ↔ GitHub Environment | — |
 | `infra/envs/<env>` | Instancie `data_platform` | `platform` |
 | `infra/identity/<env>` | Instancie `github_wif` | `identity` |
