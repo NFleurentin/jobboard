@@ -112,7 +112,7 @@ def make_ranged_response(
 @pytest.mark.parametrize(
     ("status_code", "content_range"),
     [
-        (206, "offres 0-149/1150"),  # pile au plafond : lisible jusqu'à 1149
+        (206, "offres 0-149/3150"),  # pile au plafond : lisible jusqu'à 3149
         (206, "offres 0-149/151"),
         (200, None),  # une seule page : pas de contrôle
         (204, None),  # aucun résultat
@@ -125,9 +125,9 @@ def test_validate_response_accepts_query_within_cap(
 
 
 def test_validate_response_fails_above_cap() -> None:
-    response = make_ranged_response(206, "offres 0-149/1151")
+    response = make_ranged_response(206, "offres 0-149/3151")
 
-    with pytest.raises(FatalAPIError, match="1151 results"):
+    with pytest.raises(FatalAPIError, match="3151 results"):
         make_stream().validate_response(response)
 
 

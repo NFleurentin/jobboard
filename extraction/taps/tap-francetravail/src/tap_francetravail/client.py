@@ -27,8 +27,8 @@ if TYPE_CHECKING:
 
 SCHEMAS_DIR = SchemaDirectory(schemas)
 
-# Plafond de l'API : index de début <= 1000, index de fin <= 1149
-MAX_RESULTS = 1150
+# Plafond de l'API : index de début <= 3000, index de fin <= 3149
+MAX_RESULTS = 3150
 
 
 class FranceTravailStream(RESTStream):
@@ -64,7 +64,7 @@ class FranceTravailStream(RESTStream):
     def validate_response(self, response: requests.Response) -> None:
         """Échoue si le total d'une requête dépasse le plafond de l'API.
 
-        Au-delà de 1 150 résultats, l'API ne renvoie pas la suite : une requête
+        Au-delà de 3 150 résultats, l'API ne renvoie pas la suite : une requête
         tronquée fausserait le snapshot dbt (offres non lues marquées closes).
         Seules les 206 sont contrôlées : une 200 ou une 204 tient en une page.
         """
