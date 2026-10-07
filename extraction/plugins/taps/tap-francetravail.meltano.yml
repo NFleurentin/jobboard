@@ -9,6 +9,26 @@ plugins:
     - discover
     settings:
     - name: client_id
+      kind: string
+      description: Identifiant client de l'application France Travail
     - name: client_secret
+      kind: string
       sensitive: true
+      description: Secret client de l'application France Travail
+    - name: scope
+      kind: string
+      description: Scopes OAuth demandés, séparés par des espaces (défaut fourni par le tap)
     - name: search_queries
+      kind: array
+      description: Liste des requêtes de recherche indépendantes, chacune exécutée séparément
+    # forme des records figée : tout champ ajouté ici doit l'être aussi dans
+    # loading/schemas/france_travail/offers_raw.json et la source dbt
+    select:
+    - offers.id
+    - offers.dateActualisation
+    - offers._raw
+    - offers._extracted_at
+    - offers._ingested_at
+    metadata:
+      offers:
+        replication-method: FULL_TABLE # full-refresh volontaire, voir le README
