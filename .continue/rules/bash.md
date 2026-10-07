@@ -17,8 +17,9 @@ Ces règles couvrent les scripts shell du dépôt (`extraction/run.sh`, `loading
 
 ## Variables
 
-- Le contrat des scripts : `GCP_PROJECT_ID`, `INGESTED_AT` et `MELTANO_ENVIRONMENT` sont fournis par l'appelant et vérifiés en tête avec `: "${VAR:?message}"`. Un script ne choisit jamais son environnement et ne donne aucune valeur par défaut à ces variables.
+- Le contrat des scripts : `GCP_PROJECT_ID`, `INGESTED_AT` et `MELTANO_ENVIRONMENT` sont fournis par l'appelant. Chaque script vérifie en tête, avec `: "${VAR:?message}"`, celles qu'il utilise (`load.sh` n'utilise pas `MELTANO_ENVIRONMENT`). Un script ne choisit jamais son environnement et ne donne aucune valeur par défaut à ces variables.
 - Dans un message entre guillemets doubles, `$(...)` est exécuté. Pour afficher une commande à titre d'exemple, échapper le dollar (`\$(...)`).
+- Pas d'apostrophe dans le message de `"${VAR:?message}"` : Bash y ouvre une chaîne entre guillemets simples, qui avale les lignes suivantes jusqu'à l'apostrophe suivante, et la vérification de la variable suivante disparaît (`shellcheck` SC1011).
 - Toute suppression qui dépend d'une variable est protégée contre la valeur vide (`"${DIR:?}"`).
 
 ## Écriture
