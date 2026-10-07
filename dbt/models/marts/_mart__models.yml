@@ -14,18 +14,163 @@ models:
       - dbt_utils.unique_combination_of_columns:
           arguments:
             combination_of_columns: ["offer_key", "_valid_from"]
+    config:
+      contract:
+        enforced: true
     columns:
       - name: offer_key
-        description: "Pas unique seule sur cette table : la clé unique réelle est (offer_key, _valid_from)."
+        data_type: string
+        description: "Clé de substitution (hash de source + source_offer_id). Pas unique seule sur cette table : la clé unique réelle est (offer_key, _valid_from)."
         data_tests:
           - not_null
+      - name: source
+        data_type: string
+        description: "Site source de l'offre."
+      - name: source_offer_id
+        data_type: string
+        description: "Identifiant de l'offre tel que fourni par la source d'origine."
+      - name: created_at
+        data_type: timestamp
+        description: "Date de création de l'offre côté source (UTC). NULL si illisible (SAFE_CAST en staging)."
+      - name: updated_at
+        data_type: timestamp
+        description: "Date de dernière actualisation de l'offre côté source (UTC)."
+      - name: title
+        data_type: string
+        description: "Intitulé de l'offre."
+      - name: description
+        data_type: string
+        description: "Description complète de l'offre."
+      - name: company_name
+        data_type: string
+        description: "Nom de l'entreprise, casse standardisée (INITCAP). Peut dénaturer des sigles (ex. SNCF -> Sncf) : compromis accepté."
+      - name: company_description
+        data_type: string
+        description: "Description de l'entreprise."
+      - name: company_url
+        data_type: string
+        description: "Site web de l'entreprise."
+      - name: work_location_label
+        data_type: string
+        description: "Libellé brut du lieu de travail (ex. '77 - Chessy')."
+      - name: work_location_city
+        data_type: string
+        description: "Ville, extraite de work_location_label et standardisée en casse (INITCAP). NULL si le format ne correspond pas au motif département - ville (ex. offres hors France)."
+      - name: work_location_department_code
+        data_type: string
+        description: "Code département, extrait de work_location_label (2A/2B pour la Corse). NULL si hors motif."
+      - name: work_location_postal_code
+        data_type: string
+        description: "Code postal du lieu de travail."
+      - name: work_location_commune_code
+        data_type: string
+        description: "Code commune INSEE du lieu de travail."
+      - name: work_location_latitude
+        data_type: float64
+        description: "Latitude du lieu de travail (WGS84)."
+      - name: work_location_longitude
+        data_type: float64
+        description: "Longitude du lieu de travail (WGS84)."
+      - name: rome_code
+        data_type: string
+        description: "Code ROME du métier."
+      - name: rome_label
+        data_type: string
+        description: "Libellé ROME du métier."
+      - name: appellation_label
+        data_type: string
+        description: "Appellation précise du poste."
+      - name: naf_code
+        data_type: string
+        description: "Code NAF de l'entreprise."
+      - name: sector_code
+        data_type: string
+        description: "Code du secteur d'activité de l'entreprise."
+      - name: sector_label
+        data_type: string
+        description: "Libellé du secteur d'activité de l'entreprise."
+      - name: company_size_label
+        data_type: string
+        description: "Tranche d'effectif de l'établissement."
+      - name: contract_type_code
+        data_type: string
+        description: "Code du type de contrat (ex. CDI, CDD)."
+      - name: contract_type_label
+        data_type: string
+        description: "Libellé brut du type de contrat, peut inclure une durée (ex. 'Intérim - 1 Mois')."
+      - name: contract_duration_value
+        data_type: int64
+        description: "Valeur numérique de la durée du contrat, si présente dans contract_type_label (ex. 1)."
+      - name: contract_duration_unit
+        data_type: string
+        description: "Unité de la durée du contrat, telle qu'extraite de contract_type_label (ex. 'Mois')."
+      - name: contract_nature
+        data_type: string
+        description: "Nature du contrat (ex. contrat de travail, contrat d'apprentissage)."
+      - name: working_hours_min
+        data_type: int64
+        description: "Nombre d'heures, ou borne basse d'une fourchette."
+      - name: working_hours_max
+        data_type: int64
+        description: "Borne haute d'une éventuelle fourchette d'heures. NULL si valeur unique."
+      - name: working_hours_periodicity
+        data_type: string
+        description: "Périodicité des heures (ex. 'semaine'), telle qu'extraite."
+      - name: working_schedule_type
+        data_type: string
+        description: "Type d'horaire (ex. 'Travail en journée')."
+      - name: working_time_label
+        data_type: string
+        description: "Libellé synthétique du temps de travail (ex. 'Temps plein')."
+      - name: position_count
+        data_type: int64
+        description: "Nombre de postes proposés par l'offre."
+      - name: is_apprenticeship
+        data_type: bool
+        description: "Offre en alternance."
+      - name: experience_required_code
+        data_type: string
+        description: "Code d'exigence d'expérience fourni par la source (ex. D = débutant accepté, E = expérience exigée)."
+      - name: experience_label
+        data_type: string
+        description: "Libellé de l'expérience demandée."
+      - name: qualification_code
+        data_type: string
+        description: "Code de qualification du poste."
+      - name: qualification_label
+        data_type: string
+        description: "Libellé de qualification du poste (ex. 'Cadre')."
+      - name: salary_periodicity
+        data_type: string
+        description: "Périodicité du salaire (Annuel, Mensuel, Horaire...), extraite du libellé de salaire."
+      - name: salary_min
+        data_type: float64
+        description: "Montant minimum, dans l'unité de salary_periodicity (non converti en mensuel)."
+      - name: salary_max
+        data_type: float64
+        description: "Montant maximum. NULL si le libellé de salaire ne donne qu'une valeur unique."
+      - name: is_disability_accessible
+        data_type: bool
+        description: "Offre accessible aux travailleurs handicapés."
+      - name: offer_is_adapted
+        data_type: bool
+        description: "Offre émise par une entreprise adaptée (emploi de travailleurs handicapés)."
+      - name: employer_disability_committed
+        data_type: bool
+        description: "Employeur engagé en faveur de l'emploi des personnes handicapées."
+      - name: source_url
+        data_type: string
+        description: "URL de l'offre chez le partenaire d'origine, quand elle est diffusée via un partenaire."
       - name: _valid_from
+        data_type: timestamp
         description: "Début de validité de cette version : jour d'ingestion du premier run où elle a été détectée."
         data_tests:
           - not_null
       - name: _valid_to
+        data_type: timestamp
         description: "Fin de validité, déduite : jour d'ingestion du run qui a détecté la version suivante, ou premier jour d'ingestion où l'offre est absente. NULL si la version est toujours active."
       - name: created_date
+        data_type: date
         description: "DATE(created_at), pour jointure avec dim_date. Peut être NULL : created_at vient d'un SAFE_CAST sur dateCreation."
         data_tests:
           - not_null:
@@ -36,6 +181,7 @@ models:
                 to: ref('dim_date')
                 field: date_day
       - name: updated_date
+        data_type: date
         description: "DATE(updated_at), pour jointure avec dim_date."
         data_tests:
           - relationships:
@@ -43,6 +189,7 @@ models:
                 to: ref('dim_date')
                 field: date_day
       - name: valid_from_date
+        data_type: date
         description: "DATE(_valid_from), pour jointure avec dim_date."
         data_tests:
           - not_null
@@ -51,6 +198,7 @@ models:
                 to: ref('dim_date')
                 field: date_day
       - name: valid_to_date
+        data_type: date
         description: "DATE(_valid_to), NULL si l'offre est toujours active. Pour jointure avec dim_date."
         data_tests:
           - relationships:
