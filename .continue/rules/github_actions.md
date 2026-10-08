@@ -54,7 +54,7 @@ Ne jamais interpoler une donnée contrôlée par un tiers (titre de PR, nom de b
 - `timeout-minutes` sur chaque job : un job bloqué consomme des minutes jusqu'à la limite par défaut de 6 heures.
 - `concurrency` pour annuler les exécutions obsolètes sur une même PR, et pour empêcher deux déploiements simultanés.
 - Actions tierces limitées aux éditeurs identifiés. Pour une tâche simple, préférer quelques lignes de shell à une action inconnue.
-- La logique va dans `run.sh` et `load.sh`, pas dans le YAML (voir `AGENTS.md`).
+- La logique va dans `run.sh` et `load.py`, pas dans le YAML (voir `AGENTS.md`).
 
 ## Déploiement
 

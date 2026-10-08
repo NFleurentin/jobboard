@@ -22,7 +22,7 @@ plugins:
       kind: array
       description: Liste des requêtes de recherche indépendantes, chacune exécutée séparément
     # forme des records figée : tout champ ajouté ici doit l'être aussi dans
-    # loading/schemas/france_travail/offers_raw.json et la source dbt
+    # le schéma de la table externe (infra/modules/data_platform) et la source dbt
     select:
     - offers.id
     - offers.dateActualisation
