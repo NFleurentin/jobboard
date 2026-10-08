@@ -1,0 +1,40 @@
+[project]
+name = "loading"
+version = "0.1.0"
+description = "Chargement des runs d'extraction terminés dans le snapshot dbt"
+requires-python = ">=3.12"
+dependencies = [
+    "google-cloud-bigquery>=3.46.1",
+    "google-cloud-storage>=3.16.0",
+]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",  # Style de base (pycodestyle)
+    "F",       # Erreurs logiques (Pyflakes)
+    "I",       # Tri des imports (isort)
+    "UP",      # Modernisation du code (pyupgrade)
+    "B",       # Détection de bugs potentiels (Bugbear)
+]
+ignore = [
+    "E501",    # Longueur de ligne gérée par ruff format
+]
+
+[tool.mypy]
+strict = true
+files = ["load.py", "tests"]
+
+[[tool.mypy.overrides]]
+module = ["google.cloud.storage", "google.cloud.storage.*"]
+ignore_missing_imports = true  # paquet sans annotations (pas de py.typed)
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4.0",
+    "pytest>=9.1.1",
+    "ruff>=0.16.10",
+]

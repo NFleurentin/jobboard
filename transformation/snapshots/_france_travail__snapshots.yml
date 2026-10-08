@@ -8,17 +8,6 @@ snapshots:
       check_cols: ['updated_at']   # confiance faite à dateActualisation (France Travail) pour signaler tout changement pertinent
       hard_deletes: invalidate
       partition_by: {'field': 'dbt_valid_to', 'data_type': 'timestamp', 'granularity': 'month'}
-      post_hook:
-        - >
-          MERGE `{{ target.project }}.meta.state_snapshot` AS t
-          USING (
-            SELECT '{{ var("france_travail_offers_snapshot_name") }}' AS name,
-                   {{ target_ingested_at_france_travail_offers() }} AS last_ingest
-          ) AS s
-          ON t.name = s.name
-          WHEN MATCHED THEN UPDATE SET last_ingest = s.last_ingest
-          WHEN NOT MATCHED THEN INSERT (name, last_ingest)
-          VALUES (s.name, s.last_ingest)
     description: >
       Historique SCD2 minimal des offres France Travail : garde _raw tel
       quel (STRING, pas JSON natif) à chaque version, sans extraire les
@@ -31,11 +20,12 @@ snapshots:
       la réouverture d'une offre (issue #13). La stratégie timestamp, qui
       datait les versions par dateActualisation, a été écartée pour cette
       raison ; updated_at ne doit pas être remis dans la config, la
-      stratégie check l'utiliserait comme dbt_valid_from. Le
-      post_hook avance meta.state_snapshot uniquement en cas de succès.
-      Filtre en "=" (pas ">") dans eph_ : hard_deletes:invalidate exige un
-      instant précis ; le rattrapage de plusieurs jours se fait en bouclant
-      côté orchestration, pas en élargissant la fenêtre.
+      stratégie check l'utiliserait comme dbt_valid_from.
+      Un run par appel, fourni par la var ingested_at (obligatoire) :
+      loading/load.py choisit les runs terminés postérieurs à la plus
+      grande borne du snapshot, contrôle leur volume, puis les traite dans
+      l'ordre (issue #85). Filtre en "=" (pas ">") dans eph_ :
+      hard_deletes:invalidate exige un instant précis.
       Partitionné par mois sur dbt_valid_to (issue #78) : la comparaison
       avec la source ne lit que la partition NULL des versions ouvertes, et
       stg_ élague sur la même colonne. Le MERGE final lit encore toute la

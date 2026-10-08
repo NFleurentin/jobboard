@@ -8,7 +8,7 @@ Pipeline ELT d'offres d'emploi (API France Travail → GCS → BigQuery → dbt)
 |---|---|---|
 | `infra/` | Terraform (bootstrap, modules, `envs/`, `identity/`) | [terraform_gcp.md](.continue/rules/terraform_gcp.md) |
 | `extraction/` | Projet Meltano + tap Singer maison | [meltano.md](.continue/rules/meltano.md) |
-| `loading/` | `load.sh` : GCS → `raw.france_travail_offers` (`bq load`, APPEND) | ci-dessous |
+| `loading/` | `load.py` : runs terminés → snapshot dbt (garde-fou de volume, `dbt snapshot`, `dbt build`). `load.sh` (table native) en cours de retrait (#85) | ci-dessous |
 | `transformation/` | Transformations BigQuery (dbt Fusion) | [dbt.md](.continue/rules/dbt.md) |
 | `enrichment/`, `oracle/`, `orchestration/` | Vides (`.gitkeep`), à venir | |
 | `.github/workflows/` | Collecte quotidienne en prod, test WIF | [github_actions.md](.continue/rules/github_actions.md) |
@@ -22,17 +22,17 @@ Pipeline ELT d'offres d'emploi (API France Travail → GCS → BigQuery → dbt)
 
 ## Exécution d'un run (extraction + chargement)
 
-`INGESTED_AT` est l'identifiant unique du run : il est généré **une seule fois** par l'appelant et partagé par `run.sh` et `load.sh`. Ne jamais le recalculer dans un script, sinon le chemin GCS relu diverge de celui écrit.
+`INGESTED_AT` est l'identifiant unique du run : il est généré **une seule fois** par l'appelant et partagé par `run.sh` et `load.sh`. Ne jamais le recalculer dans un script, sinon le chemin GCS relu diverge de celui écrit. `load.py` n'en dépend pas : il retrouve lui-même les runs terminés (`_SUCCESS`) qui restent à snapshoter.
 
 ```bash
 export MELTANO_ENVIRONMENT=dev
 export GCP_PROJECT_ID=jobboard-dev-3b375b
 export INGESTED_AT=$(date -u +%Y%m%dT%H%M%SZ)
 export TAP_FRANCETRAVAIL_CLIENT_ID=... TAP_FRANCETRAVAIL_CLIENT_SECRET=...
-(cd extraction && ./run.sh) && (cd loading && ./load.sh)
+(cd extraction && ./run.sh) && (cd loading && uv run load.py)
 ```
 
-`run.sh` et `load.sh` sont les seuls points d'entrée, appelés tels quels en local, en CI et plus tard par Airflow : y mettre la logique, pas dans le YAML des workflows.
+`run.sh` et `load.py` sont les seuls points d'entrée, appelés tels quels en local, en CI et plus tard par Airflow : y mettre la logique, pas dans le YAML des workflows.
 
 ## Sécurité et données
 

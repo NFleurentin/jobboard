@@ -13,9 +13,7 @@ clean-targets:
   - "dbt_packages"
 
 vars:
-  france_travail_offers_snapshot_name: 'snap_france_travail__offers'   # identifiant utilisé dans meta.state_snapshot
   france_travail_source_name: 'france_travail'                         # identifiant de source utilisé dans int_offers (multi-source)
-  france_travail_offers_min_volume_ratio: 0.8                          # ratio minimum de volume pour les offres France Travail
   
 models:
   jobboard:

@@ -16,7 +16,7 @@ Toutes les commandes se lancent depuis `transformation/`, où se trouve `profile
 ```bash
 export GCP_PROJECT_ID=jobboard-dev-3b375b      # requis par profiles.yml
 dbt parse --profiles-dir .                     # validation rapide, sans requête BigQuery
-dbt snapshot --select snap_france_travail__offers --profiles-dir .   # traite UN jour d'ingestion par appel
+dbt snapshot --select snap_france_travail__offers --vars '{ingested_at: <run>}' --profiles-dir .   # UN run par appel ; en temps normal, lancé par loading/load.py
 dbt build --select <selection> --profiles-dir .                       # toujours une sélection ciblée
 dbt format -s <modele> --profiles-dir . && dbt lint -s <modele> --profiles-dir . --fix
 ```
@@ -30,17 +30,17 @@ dbt format -s <modele> --profiles-dir . && dbt lint -s <modele> --profiles-dir .
 ## Flux du projet
 
 ```text
-source raw.france_travail_offers
-  → eph_france_travail__offers   (éphémère, filtre = sur UN _ingested_at, dédoublonne)
+source raw.france_travail_offers_ext (table externe sur GCS)
+  → eph_france_travail__offers   (éphémère, filtre = sur UN run, var ingested_at, dédoublonne)
   → snap_france_travail__offers  (SCD2 check sur updated_at, bornes au jour d'ingestion, hard_deletes: invalidate)
   → stg_france_travail__offers   (incrémental merge, PARSE_JSON(_raw) + extraction des champs)
   → int_offers                   (schéma commun multi-source, offer_key, sans contact_*/agency_*)
   → fct_offers, dim_date         (marts)
 ```
 
-- `raw.france_travail_offers` n'est lue que par `eph_france_travail__offers`. Le snapshot est déclaré en YAML et `relation:` n'accepte ni filtre ni SQL : c'est `eph_`, inliné dans la requête du snapshot, qui porte le filtre et le dédoublonnage.
-- Le filtre de `eph_` est un `=` volontaire : `hard_deletes: invalidate` compare les offres présentes un jour donné. Ne pas l'élargir en `>` ; un retard se rattrape en rejouant `dbt snapshot` plusieurs fois (un jour par appel).
-- Le jour traité vient de la macro `transformation/macros/target_ingested_at_france_travail_offers.sql`, lu dans `meta.state_snapshot` (table gérée par Terraform, avancée par le post-hook du snapshot). Forcer un jour en debug : `--vars '{"target_ingested_at_france_travail_offers": "<timestamp>"}'`.
+- `raw.france_travail_offers_ext` n'est lue que par `eph_france_travail__offers`. Le snapshot est déclaré en YAML et `relation:` n'accepte ni filtre ni SQL : c'est `eph_`, inliné dans la requête du snapshot, qui porte le filtre et le dédoublonnage.
+- Le filtre de `eph_` est un `=` volontaire : `hard_deletes: invalidate` compare les offres présentes un jour donné. Ne pas l'élargir en `>` ; un retard se rattrape en rejouant `dbt snapshot` plusieurs fois (un run par appel).
+- Le run traité vient de la var `ingested_at` (format du dossier GCS, `20261008T050000Z`), sans valeur par défaut : sans elle, tout rendu d'`eph_` échoue (snapshot, tests d'`eph_`, mais aussi `dbt format` et `dbt lint` sur `eph_`, à lancer avec `--vars`). `dbt parse` et les modèles en aval n'en ont pas besoin. Le choix du run est fait par `loading/load.py`, pas par dbt : runs terminés (`_SUCCESS`) postérieurs à la plus grande borne du snapshot, dans l'ordre. Le filtre porte sur la clé Hive `ingested_at` (STRING) : `_ingested_at` n'élague rien sur la table externe.
 - `_raw` reste une chaîne jusqu'au snapshot inclus ; le `PARSE_JSON` se fait uniquement dans `stg_`.
 - Incrémentaux de `stg_` et `fct_offers` : deux marqueurs combinés par `UNION DISTINCT`, `valid_from` pour les nouvelles versions et `valid_to` pour les fermetures. Ne pas simplifier en un seul marqueur, les fermetures seraient perdues. Ils ne sont fiables que parce que toutes les bornes du snapshot valent le jour d'ingestion traité, croissant d'un run à l'autre : ne pas revenir à une date fournie par la source (stratégie `timestamp` sur `dateActualisation`).
 - Grain de `stg_`, `int_offers` et `fct_offers` : une ligne par offre **et par version**. Clé unique : (`offer_id` ou `offer_key`, `_valid_from`).
@@ -75,7 +75,7 @@ source raw.france_travail_offers
 ## Snapshots
 
 - Le snapshot des offres a deux rôles : suivre les évolutions d'une offre, et détecter sa clôture. Une offre absente de la dernière extraction est considérée comme close.
-- La détection de clôture suppose une extraction complète. Après une extraction partielle, toutes les offres manquantes seraient marquées closes à tort, puis rouvertes au run suivant. La macro `target_ingested_at_france_travail_offers` fait donc échouer le snapshot, avant toute écriture, quand aucun jour n'est à traiter, quand le jour ciblé est vide, ou quand son volume passe sous `france_travail_offers_min_volume_ratio` fois celui du jour de référence. Ce n'est pas un test dbt : `dbt snapshot` seul n'en exécuterait aucun. Après une baisse assumée, forcer le run avec cette var à `0` dans `--vars`.
+- La détection de clôture suppose une extraction complète. Après une extraction partielle, toutes les offres manquantes seraient marquées closes à tort, puis rouvertes au run suivant. `loading/load.py` refuse donc, avant le snapshot, un run vide ou dont le nombre d'offres passe sous `--min-volume-ratio` (0,8) fois le nombre de versions ouvertes du snapshot. Un `dbt snapshot` lancé à la main ne passe pas par ce contrôle. Après une baisse assumée, forcer avec `--min-volume-ratio 0`.
 - Elle suppose aussi un périmètre de recherche constant : retirer ou modifier un critère de `search_queries` dans Meltano fait passer pour closes les offres qui sortent du périmètre.
 - La date de clôture est déduite, pas fournie par la source : c'est le jour d'ingestion du premier run où l'offre est absente. La macro `bigquery__snapshot_get_time` date ainsi toutes les bornes du snapshot (sinon dbt écrit l'heure d'exécution, fausse en rattrapage) ; ne pas remettre `updated_at:` dans sa config, la stratégie `check` l'utiliserait comme `dbt_valid_from`. La colonne et sa description le disent explicitement.
 - Une offre close peut réapparaître : les modèles en aval gèrent ce cas au lieu de supposer qu'une clôture est définitive.
