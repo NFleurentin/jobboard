@@ -144,10 +144,10 @@ models:
         data_type: string
         description: "Périodicité du salaire (Annuel, Mensuel, Horaire...), extraite du libellé de salaire."
       - name: salary_min
-        data_type: float64
+        data_type: numeric
         description: "Montant minimum, dans l'unité de salary_periodicity (non converti en mensuel)."
       - name: salary_max
-        data_type: float64
+        data_type: numeric
         description: "Montant maximum. NULL si le libellé de salaire ne donne qu'une valeur unique."
       - name: is_disability_accessible
         data_type: bool

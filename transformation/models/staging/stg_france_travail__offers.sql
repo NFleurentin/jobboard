@@ -294,12 +294,12 @@ derived AS (
         SAFE_CAST(
             regexp_extract(
                 salary_label, r'de\s+([\d]+(?:\.[\d]+)?)\s*Euros'
-            ) AS FLOAT64
+            ) AS NUMERIC
         ) AS salary_min,
         SAFE_CAST(
             regexp_extract(
                 salary_label, r'à\s+([\d]+(?:\.[\d]+)?)\s*Euros'
-            ) AS FLOAT64
+            ) AS NUMERIC
         ) AS salary_max,
 
         -- working_time_detail_label contient parfois deux lignes séparées
