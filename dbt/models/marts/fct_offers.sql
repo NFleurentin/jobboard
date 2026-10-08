@@ -4,12 +4,20 @@
 -- les fermetures), simplement repointée sur int_offers plutôt que
 -- directement sur stg_, pour rester valable si une deuxième source est
 -- ajoutée un jour.
+--
+-- Partitionné par mois sur _valid_to, avec la cible du MERGE restreinte
+-- aux versions ouvertes : même raisonnement que stg_france_travail__offers
+-- (issue #27). Les lectures des offres actives (_valid_to IS NULL) ne
+-- parcourent aussi qu'une partition.
 
 {{
     config(
         materialized='incremental',
         unique_key=['offer_key', '_valid_from'],
         incremental_strategy='merge',
+        incremental_predicates=['DBT_INTERNAL_DEST._valid_to is null'],
+        partition_by={'field': '_valid_to', 'data_type': 'timestamp', 'granularity': 'month'},
+        cluster_by=['offer_key'],
         on_schema_change='append_new_columns'
     )
 }}

@@ -67,6 +67,7 @@ source raw.france_travail_offers
 
 - staging : `incremental` quand il extrait les champs de `_raw` depuis un snapshot, `view` sinon. intermediate : `view` ou `ephemeral`. marts : `table` ou `incremental`.
 - Un `incremental` s'accompagne toujours de `partition_by`, d'un filtre sur la partition côté source et côté cible, et d'un `on_schema_change` explicite.
+- `stg_` et `fct_offers` sont partitionnés sur `_valid_to`, pas sur `_valid_from` : le filtre côté cible est `incremental_predicates` sur `_valid_to IS NULL`, les fermetures ne touchant que des versions ouvertes. Côté source, le snapshot n'est pas encore partitionné : le filtre par marqueurs ne réduit pas les octets lus.
 - Il n'est pas moins cher par nature : il relit sa propre table pour trouver son point de reprise, et un `merge` sans filtre de partition scanne toute la cible. Comparer les deux approches par un dry run avant de choisir.
 - Un modèle lu par plusieurs modèles en aval est matérialisé en `table` : en `view` ou en `ephemeral`, son calcul est refacturé à chaque lecture.
 - `maximum_bytes_billed` (10 Go en dev et en ci) est un signal à comprendre, pas un obstacle à lever.

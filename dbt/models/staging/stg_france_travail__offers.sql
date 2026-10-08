@@ -12,6 +12,17 @@
 -- croît d'un run à l'autre. Avec une date fournie par la source
 -- (dateActualisation), une version antérieure au maximum serait perdue.
 --
+-- Partitionné par mois sur _valid_to, et non sur _valid_from (issue #27) :
+-- le MERGE ne met à jour que des lignes encore ouvertes (fermetures), les
+-- nouvelles versions étant des insertions. incremental_predicates
+-- restreint donc la cible à la partition NULL des versions ouvertes, et son
+-- coût suit le nombre d'offres actives au lieu de croître avec l'historique.
+-- Une fermeture déplace la ligne vers la partition de son mois. Sur
+-- _valid_from, une fermeture d'offre ancienne tomberait hors de toute
+-- fenêtre et deviendrait un doublon. Le prédicat repose sur la même horloge
+-- croissante que les marqueurs : une ligne déjà fermée n'est jamais
+-- renvoyée ; si elle l'était, le test d'unicité le détecterait.
+--
 -- contact.* et agence.* SONT extraits ici (décision explicite, documentée
 -- dans le README) : contact.nom peut contenir un nom de recruteur, publié
 -- par France Travail lui-même dans le but de permettre de postuler. Gardé
@@ -29,6 +40,9 @@
         materialized='incremental',
         unique_key=['offer_id', '_valid_from'],
         incremental_strategy='merge',
+        incremental_predicates=['DBT_INTERNAL_DEST._valid_to is null'],
+        partition_by={'field': '_valid_to', 'data_type': 'timestamp', 'granularity': 'month'},
+        cluster_by=['offer_id'],
         on_schema_change='append_new_columns'
     )
 }}
