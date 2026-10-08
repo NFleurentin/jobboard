@@ -17,8 +17,8 @@ module "github_wif" {
   allowed_ref       = "refs/heads/main" # défense en plus de la règle de branche des GitHub Environments
 
   sa_environment = {
-    deployer = "prod" # déploiements, avec approbation manuelle
-    dbt      = "prod"
+    deployer = "prod"         # déploiements, avec approbation manuelle
+    dbt      = "prod-load"    # chargement quotidien (loading/load.py), sans approbation
     extract  = "prod-collect" # collecte planifiée, sans approbation
   }
 }
