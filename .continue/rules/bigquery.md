@@ -1,9 +1,9 @@
 ---
 paths:
-  - "dbt/**"
+  - "transformation/**"
   - "loading/**"
 globs:
-  - "dbt/**"
+  - "transformation/**"
   - "loading/**"
 ---
 
