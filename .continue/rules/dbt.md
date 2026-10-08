@@ -70,7 +70,7 @@ source raw.france_travail_offers_ext (table externe sur GCS)
 - `stg_` et `fct_offers` sont partitionnés sur `_valid_to`, pas sur `_valid_from` : le filtre côté cible est `incremental_predicates` sur `_valid_to IS NULL`, les fermetures ne touchant que des versions ouvertes. Côté source, le snapshot est partitionné de même sur `dbt_valid_to` : les marqueurs sont lus par `run_query` et injectés en littéraux, et la branche des nouvelles versions porte un prédicat redondant sur `dbt_valid_to` pour élaguer. Ne pas revenir à une sous-requête dans le `WHERE`.
 - Il n'est pas moins cher par nature : il relit sa propre table pour trouver son point de reprise, et un `merge` sans filtre de partition scanne toute la cible. Comparer les deux approches par un dry run avant de choisir.
 - Un modèle lu par plusieurs modèles en aval est matérialisé en `table` : en `view` ou en `ephemeral`, son calcul est refacturé à chaque lecture.
-- `maximum_bytes_billed` (10 Go en dev et en ci) est un signal à comprendre, pas un obstacle à lever.
+- `maximum_bytes_billed` (10 Go en dev, en ci et en prod) est un signal à comprendre, pas un obstacle à lever.
 
 ## Snapshots
 
