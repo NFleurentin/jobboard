@@ -81,7 +81,8 @@ jobs:
     needs: extract
     # Tourne aussi après une collecte en échec ou sautée (load_only) : load.py ne lit
     # que les runs terminés (_SUCCESS) et rattrape ceux en attente. Pas après une annulation.
-    if: ${{ !cancelled() }}
+    # Temporaire : sauté sur le schedule, le chargement ne se lance qu'à la main.
+    if: ${{ !cancelled() && github.event_name != 'schedule' }}
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     permissions:

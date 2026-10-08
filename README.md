@@ -143,7 +143,7 @@ cd loading && GCP_PROJECT_ID=jobboard-dev-3b375b uv run load.py
 
 Il ne dépend pas d'`INGESTED_AT` : il rattrape tous les runs terminés en attente. Le target dbt suit le profil (`dev` par défaut, `DBT_TARGET` pour un autre).
 
-**Pipeline complet, orchestré par un unique workflow GitHub Actions planifié** (`.github/workflows/pipeline-france-travail.yml`), une fois par jour : job `extract` (génération de l'identifiant de run, extraction, avec `sa-extract`), puis job `load` (`load.py`, avec `sa-dbt`), lancé même si la collecte échoue pour rattraper les runs en attente.
+**Pipeline complet, orchestré par un unique workflow GitHub Actions planifié** (`.github/workflows/pipeline-france-travail.yml`), une fois par jour : job `extract` (génération de l'identifiant de run, extraction, avec `sa-extract`), puis job `load` (`load.py`, avec `sa-dbt`), lancé même si la collecte échoue pour rattraper les runs en attente. Pour l'instant, le job `load` est sauté sur le lancement planifié : seule la collecte tourne chaque jour, et le chargement se lance à la main (`-f load_only=true`), qui rattrape tous les runs terminés en attente.
 
 ## Avancement
 
