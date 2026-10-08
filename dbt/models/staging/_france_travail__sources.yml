@@ -12,28 +12,40 @@ sources:
           freshness:
             warn_after: { count: 36, period: hour }
             error_after: { count: 72, period: hour }
+            # require_partition_filter impose un filtre sur _ingested_at
+            filter: "_ingested_at >= timestamp_sub(current_timestamp(), interval 7 day)"
         columns:
           - name: id
             description: "Identifiant de l'offre côté France Travail."
             data_tests:
-              - not_null
+              - not_null:
+                  config:
+                    where: "_ingested_at >= timestamp_sub(current_timestamp(), interval 7 day)"
 
           - name: dateActualisation
             description: "Date de dernière actualisation de l'offre, telle que renvoyée par l'API."
             data_tests:
-              - not_null
+              - not_null:
+                  config:
+                    where: "_ingested_at >= timestamp_sub(current_timestamp(), interval 7 day)"
 
           - name: _raw
             description: "Payload JSON complet de l'offre, sérialisé en texte (voir choix techniques : contourne un bug de sérialisation Decimal/orjson du target)."
             data_tests:
-              - not_null
+              - not_null:
+                  config:
+                    where: "_ingested_at >= timestamp_sub(current_timestamp(), interval 7 day)"
 
           - name: _extracted_at
             description: "Horodatage précis auquel le tap a récupéré cet enregistrement depuis l'API, à la ligne près."
             data_tests:
-              - not_null
+              - not_null:
+                  config:
+                    where: "_ingested_at >= timestamp_sub(current_timestamp(), interval 7 day)"
 
           - name: _ingested_at
             description: "Identifiant du run d'extraction/chargement (une seule valeur par run, partagée par toutes ses lignes). Utilisé pour le partitionnement et le dédoublonnage en staging."
             data_tests:
-              - not_null
+              - not_null:
+                  config:
+                    where: "_ingested_at >= timestamp_sub(current_timestamp(), interval 7 day)"
