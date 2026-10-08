@@ -29,7 +29,7 @@ Ces règles couvrent l'usage de BigQuery : datasets, données brutes, coût, con
 - Les tables de `raw` sont des tables natives nommées `<source>_<entite>` (`france_travail_offers`), chargées par `loading/load.sh` avec `bq load` (gratuit) depuis `gs://<project_id>-raw/<source>/<entite>/ingested_at=<horodatage>/`.
 - Chargement en ajout seul, dans une table partitionnée par jour sur `_ingested_at` : chaque run ajoute un instantané, et une même offre figure dans plusieurs partitions. Recharger un run (même `INGESTED_AT`) ajoute les mêmes lignes une seconde fois : le snapshot dbt dédoublonne.
 - Schéma fixe, versionné sous `loading/schemas/<source>/` : des colonnes techniques et une colonne `_raw` (`STRING`) qui contient la réponse de l'API telle quelle. Une évolution de l'API ne casse donc pas le chargement ; un nouveau champ s'ajoute dans le staging.
-- `_raw` est la colonne la plus coûteuse du projet : lire un seul de ses champs avec `JSON_VALUE` facture la chaîne entière. Elle n'est lue que par le snapshot, sur une seule partition, et par le staging, sur les lignes nouvelles du snapshot. Aucune autre requête ne la parcourt sur tout l'historique.
+- `_raw` est la colonne la plus coûteuse du projet : lire un seul de ses champs avec `JSON_VALUE` facture la chaîne entière. Elle n'est lue que par le snapshot et le staging, sur la partition des versions ouvertes du snapshot et le mois en cours. Seul le `MERGE` du snapshot la parcourt encore sur tout l'historique, car son filtre sur `dbt_valid_to` est hors du `ON`. Aucune autre requête ne la parcourt sur tout l'historique.
 - Toute lecture de `raw` filtre sur `_ingested_at`.
 
 ## Coût
