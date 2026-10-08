@@ -4,8 +4,8 @@ models:
   - name: eph_france_travail__offers
     description: >
       Modèle éphémère, seul point de contact avec la source raw. Filtre sur
-      le jour ciblé (macro target_ingested_at_france_travail_offers),
-      dédoublonne. Aucun nettoyage de champ ici — voir
+      le run fourni par la var ingested_at (obligatoire, choisie par
+      loading/load.py), dédoublonne. Aucun nettoyage de champ ici — voir
       stg_france_travail__offers.
     columns:
       - name: offer_id
