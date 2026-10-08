@@ -224,7 +224,7 @@ orchestration/  Orchestration Airflow (à venir)
 
 **Laissé de côté volontairement :** environnement de recette, orchestrateur managé, GPU cloud, Secret Manager.
 
-**Garde-fous de coût :** alerte de budget GCP, plafond `maximum_bytes_billed` sur les requêtes dbt de dev et de CI, quota quotidien BigQuery, rétention limitée du brut en dev.
+**Garde-fous de coût :** alerte de budget GCP, plafond `maximum_bytes_billed` sur les requêtes dbt de dev, de CI et de prod, quota quotidien BigQuery, rétention limitée du brut en dev.
 
 **Coût mensuel constaté :** *à compléter après quelques semaines d'exploitation.*
 

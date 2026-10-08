@@ -28,4 +28,5 @@ jobboard:
       dataset: analytics
       location: europe-west1
       threads: 8
+      maximum_bytes_billed: 10000000000
       impersonate_service_account: "sa-dbt@{{ env_var('GCP_PROJECT_ID') }}.iam.gserviceaccount.com"
