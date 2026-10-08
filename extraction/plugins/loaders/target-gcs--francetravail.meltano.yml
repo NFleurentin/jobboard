@@ -3,5 +3,6 @@ plugins:
     - name: target-gcs--francetravail
       inherit_from: target-gcs
       config:
+        # Dossier du run repris par run.sh pour y écrire _SUCCESS : les garder alignés.
         key_prefix: france-travail/
         key_naming_convention: "{stream}/ingested_at=${INGESTED_AT}/part-{timestamp}.jsonl"
