@@ -71,7 +71,9 @@ resource "google_bigquery_table" "state_snapshot" {
     { name = "last_ingest", type = "TIMESTAMP", mode = "REQUIRED" },
   ])
 
-  deletion_protection = !local.is_dev
+  # Plus lue ni écrite depuis #85 : protection levée dans un premier apply,
+  # condition pour que Terraform puisse ensuite la supprimer en prod.
+  deletion_protection = false
 }
 
 # Table externe sur les fichiers du bucket raw : le brut n'est stocké qu'une
