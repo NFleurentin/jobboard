@@ -45,7 +45,7 @@ Ne jamais interpoler une donnée contrôlée par un tiers (titre de PR, nom de b
 
 ## Secrets et environnements
 
-- Les secrets de production sont rattachés à des environments restreints à `main` : `prod` (déploiements et dbt, approbation manuelle) et `prod-collect` (collecte planifiée, `sa-extract` seul, sans approbation).
+- Les secrets de production sont rattachés à des environments restreints à `main` : `prod` (déploiements, approbation manuelle), `prod-collect` (collecte planifiée, `sa-extract` seul, sans approbation) et `prod-load` (chargement quotidien par `loading/load.py`, `sa-dbt` seul, sans approbation).
 - Ne jamais afficher un secret dans les logs (`echo`, `set -x`, mode debug), ni le passer en argument de ligne de commande.
 
 ## Hygiène des workflows

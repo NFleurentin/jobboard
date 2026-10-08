@@ -210,6 +210,16 @@ resource "google_storage_bucket_iam_member" "dbt_raw_read" {
   member = "serviceAccount:${google_service_account.dbt.email}"
 }
 
+# En CI, l'action d'authentification fournit déjà l'identité sa-dbt, et le
+# profil dbt (impersonate_service_account) demande en plus à impersonner
+# sa-dbt : il lui faut donc ce droit sur lui-même. Aucun privilège nouveau,
+# il ne peut créer que ses propres jetons.
+resource "google_service_account_iam_member" "dbt_self_impersonate" {
+  service_account_id = google_service_account.dbt.name
+  role               = "roles/iam.serviceAccountTokenCreator" # profil dbt impersonné depuis sa-dbt en CI
+  member             = "serviceAccount:${google_service_account.dbt.email}"
+}
+
 # ---------- Impersonation depuis ton compte (pas de clé JSON) ----------
 resource "google_service_account_iam_member" "me_impersonate" {
   for_each = {
