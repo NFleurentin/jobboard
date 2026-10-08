@@ -8,7 +8,7 @@ Pipeline ELT d'offres d'emploi (API France Travail → GCS → BigQuery → dbt)
 |---|---|---|
 | `infra/` | Terraform (bootstrap, modules, `envs/`, `identity/`) | [terraform_gcp.md](.continue/rules/terraform_gcp.md) |
 | `extraction/` | Projet Meltano + tap Singer maison | [meltano.md](.continue/rules/meltano.md) |
-| `loading/` | `load.py` : runs terminés → snapshot dbt (garde-fou de volume, `dbt snapshot`, `dbt build`). `load.sh` (table native) en cours de retrait (#85) | ci-dessous |
+| `loading/` | `load.py` : runs terminés → snapshot dbt (garde-fou de volume, `dbt snapshot`, `dbt build`) | ci-dessous |
 | `transformation/` | Transformations BigQuery (dbt Fusion) | [dbt.md](.continue/rules/dbt.md) |
 | `enrichment/`, `oracle/`, `orchestration/` | Vides (`.gitkeep`), à venir | |
 | `.github/workflows/` | Collecte quotidienne en prod, test WIF | [github_actions.md](.continue/rules/github_actions.md) |
@@ -16,13 +16,13 @@ Pipeline ELT d'offres d'emploi (API France Travail → GCS → BigQuery → dbt)
 ## Environnements
 
 - Deux projets GCP : `jobboard-dev-3b375b` et `jobboard-prod-3b375b`, région unique `europe-west1`. Les ressources sont nommées `<projet>-raw`, `<projet>-enriched`, `<projet>-meltano-state`, `<projet>-tfstate`.
-- Travailler en **dev**. L'agent ne lance **jamais** de commande visant la prod depuis le poste local (`terraform plan`/`apply` dans `envs/prod` ou `identity/prod`, `run.sh`/`load.sh` ou dbt avec le projet de prod) : la prod passe par la CI. Les opérations qui n'ont pas de CI (`bootstrap.sh`, `identity/prod`) sont lancées à la main par le propriétaire du dépôt.
-- Sur dev, toute commande qui écrit ou peut coûter (`run.sh`, `load.sh`, `terraform apply`, `dbt build`/`snapshot`, requête `bq`) demande une confirmation explicite ; le détail par outil est dans les règles.
-- La collecte de prod tourne chaque jour à 05:00 UTC via [extraction-france-travail.yml](.github/workflows/extraction-france-travail.yml), dans le GitHub Environment `prod-collect`. Un lancement manuel (`gh workflow run extraction-france-travail.yml --ref <branche> -f environment=dev`) exécute la collecte en dev depuis n'importe quelle branche, pour valider une modification du workflow avant le merge.
+- Travailler en **dev**. L'agent ne lance **jamais** de commande visant la prod depuis le poste local (`terraform plan`/`apply` dans `envs/prod` ou `identity/prod`, `run.sh`/`load.py` ou dbt avec le projet de prod) : la prod passe par la CI. Les opérations qui n'ont pas de CI (`bootstrap.sh`, `identity/prod`) sont lancées à la main par le propriétaire du dépôt.
+- Sur dev, toute commande qui écrit ou peut coûter (`run.sh`, `load.py`, `terraform apply`, `dbt build`/`snapshot`, requête `bq`) demande une confirmation explicite ; le détail par outil est dans les règles.
+- Le pipeline de prod tourne chaque jour à 05:00 UTC via [extraction-france-travail.yml](.github/workflows/extraction-france-travail.yml) (« Pipeline France Travail ») : job `extract` dans le GitHub Environment `prod-collect` (`sa-extract`), puis job `load` dans `prod-load` (`sa-dbt`), lancé même si la collecte échoue pour rattraper les runs en attente. Un lancement manuel (`gh workflow run extraction-france-travail.yml --ref <branche> -f environment=dev`) exécute le pipeline en dev depuis n'importe quelle branche, pour valider une modification du workflow avant le merge ; `-f load_only=true` saute la collecte.
 
 ## Exécution d'un run (extraction + chargement)
 
-`INGESTED_AT` est l'identifiant unique du run : il est généré **une seule fois** par l'appelant et partagé par `run.sh` et `load.sh`. Ne jamais le recalculer dans un script, sinon le chemin GCS relu diverge de celui écrit. `load.py` n'en dépend pas : il retrouve lui-même les runs terminés (`_SUCCESS`) qui restent à snapshoter.
+`INGESTED_AT` est l'identifiant unique du run : il est généré **une seule fois** par l'appelant de `run.sh`, qui l'utilise pour le chemin GCS et pour `_ingested_at`. Ne jamais le recalculer dans un script. `load.py` n'en dépend pas : il retrouve lui-même les runs terminés (`_SUCCESS`) qui restent à snapshoter.
 
 ```bash
 export MELTANO_ENVIRONMENT=dev

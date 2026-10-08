@@ -1,4 +1,4 @@
-name: Extraction France Travail
+name: Pipeline France Travail
 
 on:
   schedule:
@@ -11,9 +11,13 @@ on:
         options: [dev, prod]
         default: dev # un lancement manuel utilisera l'environnement dev par défaut
         required: true
+      load_only:
+        description: "Chargement seul, sans collecte (rattrapage des runs terminés)"
+        type: boolean
+        default: false
 
 concurrency:
-  group: france-travail-get-offers
+  group: france-travail-pipeline
   cancel-in-progress: false
   queue: max
 
@@ -21,7 +25,8 @@ permissions:
   contents: read
 
 jobs:
-  extract-and-load:
+  extract:
+    if: ${{ !inputs.load_only }}
     runs-on: ubuntu-26.04
     timeout-minutes: 20
     permissions:
@@ -72,6 +77,62 @@ jobs:
           TAP_FRANCETRAVAIL_CLIENT_ID: ${{ secrets.TAP_FRANCETRAVAIL_CLIENT_ID }}
           TAP_FRANCETRAVAIL_CLIENT_SECRET: ${{ secrets.TAP_FRANCETRAVAIL_CLIENT_SECRET }}
 
-      - name: Chargement BigQuery
+  load:
+    needs: extract
+    # Tourne aussi après une collecte en échec ou sautée (load_only) : load.py ne lit
+    # que les runs terminés (_SUCCESS) et rattrape ceux en attente. Pas après une annulation.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write # requis pour obtenir le jeton OIDC (Workload Identity Federation)
+
+    # Même règle que la collecte ; prod-load : limité à sa-dbt et à la branche main, sans approbation.
+    environment: ${{ inputs.environment == 'dev' && 'dev' || 'prod-load' }}
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      DBT_TARGET: ${{ inputs.environment == 'dev' && 'dev' || 'prod' }}
+      # dbt Fusion n'est pas un paquet Python : archive officielle, version et empreinte figées
+      # (empreinte publiée par le CDN dans <archive>.sha256). Le script d'installation de dbt Labs
+      # n'est pas utilisé : il ne vérifie pas l'empreinte et installe jq au passage.
+      DBT_VERSION: "2.0.6"
+      DBT_SHA256: "64611a38348383eae86a4834611cfc786f96cdbc907fbdf93825c5560d20c197"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Installations avant l'authentification GCP : le code téléchargé ne voit pas les credentials
+      - name: Installer uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.11.17"
+
+      - name: Installer Python et les bibliothèques GCP (versions figées par .python-version et uv.lock)
         working-directory: loading
-        run: ./load.sh
+        run: uv sync --frozen
+
+      - name: Installer dbt Fusion
+        run: |
+          archive="$RUNNER_TEMP/dbt.tar.gz"
+          curl -fsSL -o "$archive" \
+            "https://public.cdn.getdbt.com/fs/cli/fs-v${DBT_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          echo "${DBT_SHA256}  ${archive}" | sha256sum --check
+          mkdir -p "$RUNNER_TEMP/dbt"
+          tar -C "$RUNNER_TEMP/dbt" -xzf "$archive"
+          echo "$RUNNER_TEMP/dbt" >> "$GITHUB_PATH"
+
+      - name: Installer les paquets dbt (versions figées par package-lock.yml)
+        working-directory: transformation
+        run: dbt deps
+
+      - name: Authentification GCP (Workload Identity Federation)
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DBT_SA }}
+
+      - name: Chargement (snapshot des runs terminés, puis modèles en aval)
+        working-directory: loading
+        run: uv run load.py

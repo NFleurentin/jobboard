@@ -7,7 +7,7 @@ globs:
 
 # Règles Bash
 
-Ces règles couvrent les scripts shell du dépôt (`extraction/run.sh`, `loading/load.sh`). Les bonnes pratiques courantes (guillemets, `[[ ]]`, `$(...)`, `mktemp` et `trap`, pas d'`eval`) s'appliquent sans être répétées ici.
+Ces règles couvrent les scripts shell du dépôt (`extraction/run.sh`). Les bonnes pratiques courantes (guillemets, `[[ ]]`, `$(...)`, `mktemp` et `trap`, pas d'`eval`) s'appliquent sans être répétées ici.
 
 ## Principes
 
@@ -17,7 +17,7 @@ Ces règles couvrent les scripts shell du dépôt (`extraction/run.sh`, `loading
 
 ## Variables
 
-- Le contrat des scripts : `GCP_PROJECT_ID`, `INGESTED_AT` et `MELTANO_ENVIRONMENT` sont fournis par l'appelant. Chaque script vérifie en tête, avec `: "${VAR:?message}"`, celles qu'il utilise (`load.sh` n'utilise pas `MELTANO_ENVIRONMENT`). Un script ne choisit jamais son environnement et ne donne aucune valeur par défaut à ces variables.
+- Le contrat des scripts : `GCP_PROJECT_ID`, `INGESTED_AT` et `MELTANO_ENVIRONMENT` sont fournis par l'appelant. Chaque script vérifie en tête, avec `: "${VAR:?message}"`, celles qu'il utilise. Un script ne choisit jamais son environnement et ne donne aucune valeur par défaut à ces variables.
 - Dans un message entre guillemets doubles, `$(...)` est exécuté. Pour afficher une commande à titre d'exemple, échapper le dollar (`\$(...)`).
 - Pas d'apostrophe dans le message de `"${VAR:?message}"` : Bash y ouvre une chaîne entre guillemets simples, qui avale les lignes suivantes jusqu'à l'apostrophe suivante, et la vérification de la variable suivante disparaît (`shellcheck` SC1011).
 - Toute suppression qui dépend d'une variable est protégée contre la valeur vide (`"${DIR:?}"`).
@@ -36,7 +36,7 @@ Autorisé sans confirmation : `shellcheck`, `bash -n` (vérification de syntaxe 
 
 Avant d'exécuter un script : afficher `GCP_PROJECT_ID` et `MELTANO_ENVIRONMENT`, et vérifier qu'ils désignent dev.
 
-Demander une confirmation explicite avant d'exécuter `run.sh` ou `load.sh` sur dev : ils appellent une API externe et écrivent dans GCS et BigQuery.
+Demander une confirmation explicite avant d'exécuter `run.sh` sur dev : il appelle une API externe et écrit dans GCS.
 
 Interdit :
 
