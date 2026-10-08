@@ -166,7 +166,7 @@ Lit les mêmes variables d'environnement que l'extraction (`GCP_PROJECT_ID`, `IN
 infra/          Terraform : bootstrap, modules, envs/ (plateforme) et identity/ (CI), en dev et prod
 extraction/     Projet Meltano, tap France Travail, run.sh (point d'entrée de l'extraction)
 loading/        Chargement GCS → BigQuery (load.sh, schémas)
-dbt/            Projet dbt (snapshot, staging, intermediate, marts)
+transformation/ Projet dbt (snapshot, staging, intermediate, marts)
 enrichment/     Enrichissement LLM (à venir)
 oracle/         Migrations, packages PL/SQL, application APEX, données fictives (à venir)
 orchestration/  Orchestration Airflow (à venir)

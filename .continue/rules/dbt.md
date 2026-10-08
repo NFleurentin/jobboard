@@ -1,8 +1,8 @@
 ---
 paths:
-  - "dbt/**"
+  - "transformation/**"
 globs:
-  - "dbt/**"
+  - "transformation/**"
 ---
 
 # Règles dbt
@@ -11,7 +11,7 @@ Le projet suit le guide *How we structure our dbt projects* de dbt Labs (couches
 
 ## Commandes
 
-Toutes les commandes se lancent depuis `dbt/`, où se trouve `profiles.yml`.
+Toutes les commandes se lancent depuis `transformation/`, où se trouve `profiles.yml`. `GCP_PROJECT_ID` vient du `.env` de ce dossier (copie non versionnée de `.env.example`), seule source lue par l'extension VS Code, ou d'un `export` dans le shell.
 
 ```bash
 export GCP_PROJECT_ID=jobboard-dev-3b375b      # requis par profiles.yml
@@ -40,7 +40,7 @@ source raw.france_travail_offers
 
 - `raw.france_travail_offers` n'est lue que par `eph_france_travail__offers`. Le snapshot est déclaré en YAML et `relation:` n'accepte ni filtre ni SQL : c'est `eph_`, inliné dans la requête du snapshot, qui porte le filtre et le dédoublonnage.
 - Le filtre de `eph_` est un `=` volontaire : `hard_deletes: invalidate` compare les offres présentes un jour donné. Ne pas l'élargir en `>` ; un retard se rattrape en rejouant `dbt snapshot` plusieurs fois (un jour par appel).
-- Le jour traité vient de la macro `dbt/macros/target_ingested_at_france_travail_offers.sql`, lu dans `meta.state_snapshot` (table gérée par Terraform, avancée par le post-hook du snapshot). Forcer un jour en debug : `--vars '{"target_ingested_at_france_travail_offers": "<timestamp>"}'`.
+- Le jour traité vient de la macro `transformation/macros/target_ingested_at_france_travail_offers.sql`, lu dans `meta.state_snapshot` (table gérée par Terraform, avancée par le post-hook du snapshot). Forcer un jour en debug : `--vars '{"target_ingested_at_france_travail_offers": "<timestamp>"}'`.
 - `_raw` reste une chaîne jusqu'au snapshot inclus ; le `PARSE_JSON` se fait uniquement dans `stg_`.
 - Incrémentaux de `stg_` et `fct_offers` : deux marqueurs combinés par `UNION DISTINCT`, `valid_from` pour les nouvelles versions et `valid_to` pour les fermetures. Ne pas simplifier en un seul marqueur, les fermetures seraient perdues. Ils ne sont fiables que parce que toutes les bornes du snapshot valent le jour d'ingestion traité, croissant d'un run à l'autre : ne pas revenir à une date fournie par la source (stratégie `timestamp` sur `dateActualisation`).
 - Grain de `stg_`, `int_offers` et `fct_offers` : une ligne par offre **et par version**. Clé unique : (`offer_id` ou `offer_key`, `_valid_from`).

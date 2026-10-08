@@ -9,7 +9,7 @@ Pipeline ELT d'offres d'emploi (API France Travail → GCS → BigQuery → dbt)
 | `infra/` | Terraform (bootstrap, modules, `envs/`, `identity/`) | [terraform_gcp.md](.continue/rules/terraform_gcp.md) |
 | `extraction/` | Projet Meltano + tap Singer maison | [meltano.md](.continue/rules/meltano.md) |
 | `loading/` | `load.sh` : GCS → `raw.france_travail_offers` (`bq load`, APPEND) | ci-dessous |
-| `dbt/` | Transformations BigQuery (dbt Fusion) | [dbt.md](.continue/rules/dbt.md) |
+| `transformation/` | Transformations BigQuery (dbt Fusion) | [dbt.md](.continue/rules/dbt.md) |
 | `enrichment/`, `oracle/`, `orchestration/` | Vides (`.gitkeep`), à venir | |
 | `.github/workflows/` | Collecte quotidienne en prod, test WIF | [github_actions.md](.continue/rules/github_actions.md) |
 
