@@ -48,11 +48,6 @@ resource "google_bigquery_dataset" "raw" {
   delete_contents_on_destroy = local.is_dev
 }
 
-resource "google_bigquery_dataset" "meta" {
-  dataset_id = "meta"
-  location   = var.location
-}
-
 # Datasets des couches dbt, en prod seulement : en dev et en CI,
 # generate_schema_name regroupe tout dans le dataset du profil, créé par dbt.
 resource "google_bigquery_dataset" "dbt_layer" {
@@ -60,20 +55,6 @@ resource "google_bigquery_dataset" "dbt_layer" {
 
   dataset_id = each.key
   location   = var.location
-}
-
-resource "google_bigquery_table" "state_snapshot" {
-  dataset_id = google_bigquery_dataset.meta.dataset_id
-  table_id   = "state_snapshot"
-
-  schema = jsonencode([
-    { name = "name", type = "STRING", mode = "REQUIRED" },
-    { name = "last_ingest", type = "TIMESTAMP", mode = "REQUIRED" },
-  ])
-
-  # Plus lue ni écrite depuis #85 : protection levée dans un premier apply,
-  # condition pour que Terraform puisse ensuite la supprimer en prod.
-  deletion_protection = false
 }
 
 # Table externe sur les fichiers du bucket raw : le brut n'est stocké qu'une
@@ -189,12 +170,6 @@ resource "google_project_iam_member" "dbt_user" {
 resource "google_bigquery_dataset_iam_member" "dbt_raw_viewer" {
   dataset_id = google_bigquery_dataset.raw.dataset_id
   role       = "roles/bigquery.dataViewer" # lit la source, sans pouvoir l'écrire
-  member     = "serviceAccount:${google_service_account.dbt.email}"
-}
-
-resource "google_bigquery_dataset_iam_member" "dbt_meta_editor" {
-  dataset_id = google_bigquery_dataset.meta.dataset_id
-  role       = "roles/bigquery.dataEditor" # post-hook du snapshot (MERGE dans meta.state_snapshot)
   member     = "serviceAccount:${google_service_account.dbt.email}"
 }
 
