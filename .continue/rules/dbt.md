@@ -11,7 +11,7 @@ Le projet suit le guide *How we structure our dbt projects* de dbt Labs (couches
 
 ## Commandes
 
-Toutes les commandes se lancent depuis `transformation/`, où se trouve `profiles.yml`.
+Toutes les commandes se lancent depuis `transformation/`, où se trouve `profiles.yml`. `GCP_PROJECT_ID` vient du `.env` de ce dossier (copie non versionnée de `.env.example`), seule source lue par l'extension VS Code, ou d'un `export` dans le shell.
 
 ```bash
 export GCP_PROJECT_ID=jobboard-dev-3b375b      # requis par profiles.yml
