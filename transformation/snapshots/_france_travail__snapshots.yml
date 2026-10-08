@@ -28,5 +28,5 @@ snapshots:
       hard_deletes:invalidate exige un instant précis.
       Partitionné par mois sur dbt_valid_to (issue #78) : la comparaison
       avec la source ne lit que la partition NULL des versions ouvertes, et
-      stg_ élague sur la même colonne. Le MERGE final lit encore toute la
-      table (filtre dbt_valid_to hors du ON, dans la macro de Fusion).
+      stg_ élague sur la même colonne. Le MERGE final aussi, via la macro
+      bigquery__snapshot_merge_sql (filtre dbt_valid_to dans le ON, issue #80).
