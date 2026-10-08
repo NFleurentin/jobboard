@@ -74,6 +74,40 @@ resource "google_bigquery_table" "state_snapshot" {
   deletion_protection = !local.is_dev
 }
 
+# Table externe sur les fichiers du bucket raw : le brut n'est stocké qu'une
+# fois, dans GCS (issue #85). Un dossier ingested_at=<run> par run, lu comme
+# une partition Hive : la clé ingested_at (STRING) est ajoutée par BigQuery,
+# elle ne figure donc pas dans le schéma, et doit être filtrée par chaque
+# requête (require_partition_filter). _ingested_at, colonne des fichiers,
+# n'élague rien. Suffixe _ext : signale une table externe, et évite un
+# renommage (donc un remplacement) à la suppression de la table native.
+resource "google_bigquery_table" "france_travail_offers_ext" {
+  dataset_id = google_bigquery_dataset.raw.dataset_id
+  table_id   = "france_travail_offers_ext"
+
+  external_data_configuration {
+    autodetect    = false
+    source_format = "NEWLINE_DELIMITED_JSON"
+    source_uris   = ["gs://${google_storage_bucket.raw.name}/france-travail/offers/*"]
+
+    hive_partitioning_options {
+      mode                     = "STRINGS"
+      source_uri_prefix        = "gs://${google_storage_bucket.raw.name}/france-travail/offers"
+      require_partition_filter = true
+    }
+
+    schema = jsonencode([
+      { "mode" : "REQUIRED", "name" : "id", "type" : "STRING" },
+      { "mode" : "NULLABLE", "name" : "dateActualisation", "type" : "TIMESTAMP" },
+      { "mode" : "REQUIRED", "name" : "_raw", "type" : "STRING" },
+      { "mode" : "REQUIRED", "name" : "_extracted_at", "type" : "TIMESTAMP" },
+      { "mode" : "REQUIRED", "name" : "_ingested_at", "type" : "TIMESTAMP" }
+    ])
+  }
+
+  deletion_protection = !local.is_dev
+}
+
 # ---------- Service accounts ----------
 resource "google_service_account" "extract" {
   account_id   = "sa-extract"
@@ -168,6 +202,12 @@ resource "google_bigquery_dataset_iam_member" "dbt_layer_editor" {
   dataset_id = each.value.dataset_id
   role       = "roles/bigquery.dataEditor" # tables et vues des modèles de la couche
   member     = "serviceAccount:${google_service_account.dbt.email}"
+}
+
+resource "google_storage_bucket_iam_member" "dbt_raw_read" {
+  bucket = google_storage_bucket.raw.name
+  role   = "roles/storage.objectViewer" # lecture de la table externe raw.france_travail_offers_ext
+  member = "serviceAccount:${google_service_account.dbt.email}"
 }
 
 # ---------- Impersonation depuis ton compte (pas de clé JSON) ----------
