@@ -30,7 +30,7 @@ Ces règles couvrent l'usage de BigQuery : datasets, données brutes, coût, con
 - Partitionnement Hive : la clé `ingested_at` (`STRING`, tirée du nom du dossier) est la seule colonne qui élague, et `require_partition_filter` l'impose. Chaque run est un instantané complet, et une même offre figure dans plusieurs runs.
 - Le cache de résultats ne voit pas les fichiers ajoutés dans GCS : ne lire que des runs terminés (`_SUCCESS`), donc figés.
 - Schéma fixe, déclaré dans Terraform (`autodetect` désactivé) : des colonnes techniques et une colonne `_raw` (`STRING`) qui contient la réponse de l'API telle quelle. Une évolution de l'API ne casse donc pas le chargement ; un nouveau champ s'ajoute dans le staging.
-- `_raw` est la colonne la plus coûteuse du projet : lire un seul de ses champs avec `JSON_VALUE` facture la chaîne entière. Elle n'est lue que par le snapshot et le staging, sur la partition des versions ouvertes du snapshot et le mois en cours. Seul le `MERGE` du snapshot la parcourt encore sur tout l'historique, car son filtre sur `dbt_valid_to` est hors du `ON`. Aucune autre requête ne la parcourt sur tout l'historique.
+- `_raw` est la colonne la plus coûteuse du projet : lire un seul de ses champs avec `JSON_VALUE` facture la chaîne entière. Elle n'est lue que par le snapshot et le staging, sur la partition des versions ouvertes du snapshot et le mois en cours. Aucune requête ne la parcourt sur tout l'historique.
 - Toute lecture de `raw` filtre sur la clé Hive `ingested_at`, jamais sur `_ingested_at` (rejeté par `require_partition_filter`). Le dry run annonce 0 octet sur une table externe : le volume réel se lit dans les statistiques du job.
 
 ## Coût

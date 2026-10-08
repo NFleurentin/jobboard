@@ -81,7 +81,7 @@ source raw.france_travail_offers_ext (table externe sur GCS)
 - Une offre close peut réapparaître : les modèles en aval gèrent ce cas au lieu de supposer qu'une clôture est définitive.
 - Sa requête retourne une seule ligne par clé : une clé en double fait échouer la fusion ou fausse l'historique.
 - La détection de changement porte sur une colonne courte (`updated_at`, ou une empreinte de `_raw`), pas sur `_raw` lui-même : la comparaison relit cette colonne dans toutes les versions ouvertes à chaque run.
-- Partitionné par mois sur `dbt_valid_to` : la comparaison ne lit que la partition des versions ouvertes. Le `MERGE` de Fusion, lui, lit encore toute la table, son filtre étant hors du `ON`. Le partitionnement ne s'applique pas à une table existante : la migrer par copie (`CREATE TABLE ... PARTITION BY ... AS SELECT *`, contrôle d'empreinte, puis renommage), opération lancée à la main.
+- Partitionné par mois sur `dbt_valid_to` : la comparaison ne lit que la partition des versions ouvertes. Le `MERGE` final aussi, grâce à la surcharge `bigquery__snapshot_merge_sql`, qui place le filtre `dbt_valid_to is null` dans le `ON` (dans un `WHEN MATCHED`, il n'élague rien). Code interne de Fusion recopié : le comparer à l'original à chaque mise à jour de dbt. Le partitionnement ne s'applique pas à une table existante : la migrer par copie (`CREATE TABLE ... PARTITION BY ... AS SELECT *`, contrôle d'empreinte, puis renommage), opération lancée à la main.
 - L'historique d'un snapshot est irremplaçable : il ne peut pas être reconstruit à partir de la source.
 
 ## Environnements
