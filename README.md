@@ -105,7 +105,10 @@ Un tap Singer développé pour l'API France Travail (authentification OAuth2, pa
 **Ce que produit un run :**
 ```
 gs://jobboard-<env>-3b375b-raw/france-travail/offers/ingested_at=<INGESTED_AT>/part-<timestamp>.jsonl
+gs://jobboard-<env>-3b375b-raw/france-travail/offers/ingested_at=<INGESTED_AT>/_SUCCESS
 ```
+
+`_SUCCESS`, fichier vide, est écrit par `run.sh` une fois le run Meltano réussi : un dossier sans ce fichier (extraction en échec ou en cours) est un run incomplet, à ne pas charger.
 
 Chaque enregistrement contient `id`, `dateActualisation`, `_raw` (le payload complet de l'offre, sérialisé en JSON texte), `_extracted_at` et `_ingested_at`.
 
