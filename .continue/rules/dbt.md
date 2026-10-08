@@ -67,7 +67,7 @@ source raw.france_travail_offers
 
 - staging : `incremental` quand il extrait les champs de `_raw` depuis un snapshot, `view` sinon. intermediate : `view` ou `ephemeral`. marts : `table` ou `incremental`.
 - Un `incremental` s'accompagne toujours de `partition_by`, d'un filtre sur la partition côté source et côté cible, et d'un `on_schema_change` explicite.
-- `stg_` et `fct_offers` sont partitionnés sur `_valid_to`, pas sur `_valid_from` : le filtre côté cible est `incremental_predicates` sur `_valid_to IS NULL`, les fermetures ne touchant que des versions ouvertes. Côté source, le snapshot n'est pas encore partitionné : le filtre par marqueurs ne réduit pas les octets lus.
+- `stg_` et `fct_offers` sont partitionnés sur `_valid_to`, pas sur `_valid_from` : le filtre côté cible est `incremental_predicates` sur `_valid_to IS NULL`, les fermetures ne touchant que des versions ouvertes. Côté source, le snapshot est partitionné de même sur `dbt_valid_to` : les marqueurs sont lus par `run_query` et injectés en littéraux, et la branche des nouvelles versions porte un prédicat redondant sur `dbt_valid_to` pour élaguer. Ne pas revenir à une sous-requête dans le `WHERE`.
 - Il n'est pas moins cher par nature : il relit sa propre table pour trouver son point de reprise, et un `merge` sans filtre de partition scanne toute la cible. Comparer les deux approches par un dry run avant de choisir.
 - Un modèle lu par plusieurs modèles en aval est matérialisé en `table` : en `view` ou en `ephemeral`, son calcul est refacturé à chaque lecture.
 - `maximum_bytes_billed` (10 Go en dev et en ci) est un signal à comprendre, pas un obstacle à lever.
@@ -80,7 +80,8 @@ source raw.france_travail_offers
 - La date de clôture est déduite, pas fournie par la source : c'est le jour d'ingestion du premier run où l'offre est absente. La macro `bigquery__snapshot_get_time` date ainsi toutes les bornes du snapshot (sinon dbt écrit l'heure d'exécution, fausse en rattrapage) ; ne pas remettre `updated_at:` dans sa config, la stratégie `check` l'utiliserait comme `dbt_valid_from`. La colonne et sa description le disent explicitement.
 - Une offre close peut réapparaître : les modèles en aval gèrent ce cas au lieu de supposer qu'une clôture est définitive.
 - Sa requête retourne une seule ligne par clé : une clé en double fait échouer la fusion ou fausse l'historique.
-- La détection de changement porte sur une colonne courte (`updated_at`, ou une empreinte de `_raw`), pas sur `_raw` lui-même : la comparaison relit cette colonne dans tout le snapshot à chaque run.
+- La détection de changement porte sur une colonne courte (`updated_at`, ou une empreinte de `_raw`), pas sur `_raw` lui-même : la comparaison relit cette colonne dans toutes les versions ouvertes à chaque run.
+- Partitionné par mois sur `dbt_valid_to` : la comparaison ne lit que la partition des versions ouvertes. Le `MERGE` de Fusion, lui, lit encore toute la table, son filtre étant hors du `ON`. Le partitionnement ne s'applique pas à une table existante : la migrer par copie (`CREATE TABLE ... PARTITION BY ... AS SELECT *`, contrôle d'empreinte, puis renommage), opération lancée à la main.
 - L'historique d'un snapshot est irremplaçable : il ne peut pas être reconstruit à partir de la source.
 
 ## Environnements

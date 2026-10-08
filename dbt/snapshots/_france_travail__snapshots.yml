@@ -7,6 +7,7 @@ snapshots:
       strategy: check
       check_cols: ['updated_at']   # confiance faite à dateActualisation (France Travail) pour signaler tout changement pertinent
       hard_deletes: invalidate
+      partition_by: {'field': 'dbt_valid_to', 'data_type': 'timestamp', 'granularity': 'month'}
       post_hook:
         - >
           MERGE `{{ target.project }}.meta.state_snapshot` AS t
@@ -35,3 +36,7 @@ snapshots:
       Filtre en "=" (pas ">") dans eph_ : hard_deletes:invalidate exige un
       instant précis ; le rattrapage de plusieurs jours se fait en bouclant
       côté orchestration, pas en élargissant la fenêtre.
+      Partitionné par mois sur dbt_valid_to (issue #78) : la comparaison
+      avec la source ne lit que la partition NULL des versions ouvertes, et
+      stg_ élague sur la même colonne. Le MERGE final lit encore toute la
+      table (filtre dbt_valid_to hors du ON, dans la macro de Fusion).

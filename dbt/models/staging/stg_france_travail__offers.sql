@@ -47,6 +47,23 @@
     )
 }}
 
+{#- Marqueurs lus à part et injectés en littéraux (issue #78) : une
+    sous-requête dans le WHERE empêcherait l'élagage des partitions du
+    snapshot. 1970 au parse et sur une table vide. -#}
+{%- set max_valid_from = '1970-01-01' -%}
+{%- set max_valid_to = '1970-01-01' -%}
+{%- if execute and is_incremental() -%}
+    {%- set markers_query -%}
+        select
+            coalesce(max(_valid_from), timestamp('1970-01-01')) as max_valid_from,
+            coalesce(max(_valid_to), timestamp('1970-01-01')) as max_valid_to
+        from {{ this }}
+    {%- endset -%}
+    {%- set markers = run_query(markers_query).rows[0] -%}
+    {%- set max_valid_from = markers['max_valid_from'] -%}
+    {%- set max_valid_to = markers['max_valid_to'] -%}
+{%- endif %}
+
 WITH source AS (
 
     SELECT * FROM {{ ref('snap_france_travail__offers') }}
@@ -59,19 +76,18 @@ snapshot AS (
 
         select * from source
         where
-            dbt_valid_from > (
-                select coalesce(max(_valid_from), timestamp('1970-01-01'))
-                from {{ this }}
+            dbt_valid_from > timestamp('{{ max_valid_from }}')
+            -- Redondant (valid_to > valid_from > marqueur), mais seul
+            -- prédicat sur la colonne de partition du snapshot : élague.
+            and (
+                dbt_valid_to is null
+                or dbt_valid_to > timestamp('{{ max_valid_from }}')
             )
 
         union distinct
 
         select * from source
-        where dbt_valid_to > (
-            select coalesce(max(_valid_to), timestamp('1970-01-01'))
-            from {{ this }}
-            where _valid_to is not null
-        )
+        where dbt_valid_to > timestamp('{{ max_valid_to }}')
 
     {% else %}
 
