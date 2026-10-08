@@ -35,6 +35,7 @@ Ces règles couvrent l'usage de BigQuery : datasets, données brutes, coût, con
 ## Coût
 
 - Toujours estimer avant d'exécuter : `bq query --dry_run`.
+- Sur un `MERGE` vers une table partitionnée, le dry run ne donne qu'une borne haute, sans élagage. Les octets réels se lisent après coup dans `INFORMATION_SCHEMA.JOBS` (`total_bytes_processed`).
 - `LIMIT` ne réduit pas le coût. Pour regarder des données, utiliser `bq head`, gratuit.
 - Filtrer sur la colonne de partition avec une valeur constante ou un paramètre : un filtre calculé par une sous-requête ou à travers une fonction empêche l'élagage.
 - `maximum_bytes_billed` est fixé dans `profiles.yml` et se passe aussi à `bq query` pour toute requête manuelle.
