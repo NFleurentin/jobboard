@@ -7,6 +7,7 @@ Pipeline ELT d'offres d'emploi (API France Travail → GCS → BigQuery → dbt)
 | Dossier | Contenu | Détails |
 |---|---|---|
 | `infra/` | Terraform (bootstrap, modules, `envs/`, `identity/`) | [terraform_gcp.md](.continue/rules/terraform_gcp.md) |
+| `infra/github/` | Rulesets et paramètres du dépôt GitHub, appliqués à la main, `check.sh` pour la dérive | [README](infra/github/README.md) |
 | `extraction/` | Projet Meltano + tap Singer maison | [meltano.md](.continue/rules/meltano.md) |
 | `loading/` | `load.py` : runs terminés → snapshot dbt (garde-fou de volume, `dbt snapshot`, `dbt build`) | ci-dessous |
 | `transformation/` | Transformations BigQuery (dbt Fusion) | [dbt.md](.continue/rules/dbt.md) |

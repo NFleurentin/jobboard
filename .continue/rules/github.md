@@ -26,16 +26,18 @@ Tout changement arrive sur `main` par une pull request, jamais par un push direc
 
 Squash merge uniquement : une PR = un commit sur `main`, annulable par un seul `git revert`.
 
-- Le message du commit de squash se limite au titre de la PR. Vérifier ce titre juste avant la fusion, puis le passer explicitement : `gh pr merge <numéro> --squash --subject "<titre de la PR>" --body "" --delete-branch`. Sans `--body ""`, GitHub peut ajouter la liste des commits ou la description.
+- Le message du commit de squash se limite au titre de la PR : le dépôt est configuré ainsi (corps vide, branche supprimée après merge). Vérifier ce titre juste avant la fusion, puis `gh pr merge <numéro> --squash`.
 - Après un squash merge, `git branch -d` échoue sur la branche locale : `git branch -D` est attendu. Ne pas réutiliser une branche fusionnée.
 
 ## Protection de `main`
 
-État attendu, que l'agent ne modifie jamais mais dont il signale tout écart : PR obligatoire, checks de CI obligatoires dès qu'une CI existe, historique linéaire, squash merge seul, push forcé et suppression interdits, aucun contournement pour les administrateurs.
+Imposée par un ruleset et des paramètres versionnés dans `infra/github/`, appliqués à la main par le propriétaire du dépôt : PR obligatoire, historique linéaire, squash merge seul, push forcé et suppression interdits, aucun contournement, y compris pour les administrateurs. Les checks de CI deviendront obligatoires dès qu'une CI existe.
+
+L'agent ne modifie jamais cette configuration. Il signale tout écart relevé par `infra/github/check.sh`.
 
 ## Garde-fous pour l'agent
 
-Autorisé sans confirmation, en lecture seule : `gh pr view`, `gh pr list`, `gh pr diff`, `gh pr checks`, `gh run list`, `gh run view`, `gh issue view`, `gh issue list`.
+Autorisé sans confirmation, en lecture seule : `gh pr view`, `gh pr list`, `gh pr diff`, `gh pr checks`, `gh run list`, `gh run view`, `gh issue view`, `gh issue list`, `infra/github/check.sh`.
 
 Demander une confirmation explicite avant :
 
