@@ -157,6 +157,7 @@ Il ne dépend pas d'`INGESTED_AT` : il rattrape tous les runs terminés en atten
 - [x] Brut lu en place dans GCS (table externe), runs choisis et contrôlés par `loading/load.py` avant le snapshot
 - [ ] Modélisation dbt (staging, marts) et tests *(en cours : snapshot SCD2, staging, `int_offers`, `fct_offers`, `dim_date`)*
 - [ ] Premier dashboard
+- [x] Protection de `main` et paramètres GitHub versionnés, contrôlés par `infra/github/check.sh`
 - [ ] CI/CD (lint, plan Terraform, dbt sur pull request)
 - [ ] Score de pertinence par règles
 - [ ] Application APEX v1 (offres pertinentes, suivi de candidatures)
@@ -171,7 +172,8 @@ Il ne dépend pas d'`INGESTED_AT` : il rattrape tous les runs terminés en atten
 ## Structure du dépôt
 
 ```
-infra/          Terraform : bootstrap, modules, envs/ (plateforme) et identity/ (CI), en dev et prod
+infra/          Terraform : bootstrap, modules, envs/ (plateforme) et identity/ (CI), en dev et prod ;
+                github/ : rulesets et paramètres du dépôt GitHub
 extraction/     Projet Meltano, tap France Travail, run.sh (point d'entrée de l'extraction)
 loading/        Chargement des runs terminés dans le snapshot dbt (load.py)
 transformation/ Projet dbt (snapshot, staging, intermediate, marts)
@@ -220,6 +222,7 @@ orchestration/  Orchestration Airflow (à venir)
 | Collecte et chargement dans un même workflow, en deux jobs (`extract` avec `sa-extract` dans `prod-collect`, `load` avec `sa-dbt` dans `prod-load`) ; `load` tourne aussi après une collecte en échec | l'environnement du chargement se déduit des mêmes `inputs` que la collecte : une collecte dev ne peut pas déclencher un chargement prod. Chaque job a son runner, son environnement et son compte (moindre privilège). Le workflow se valide en dev depuis une branche avant le merge. `load_only` relance le chargement seul | workflow de chargement séparé déclenché par `workflow_run` (environnement de la collecte inconnu, chargement limité aux collectes planifiées, validation impossible avant le premier merge), chargement dans le même job (un seul compte avec les droits des deux) |
 | Toutes les dépendances de la collecte figées : Python et Meltano par `uv.lock`, plugins par SHA ou version exacte dans `pip_url`, leurs dépendances transitives par un fichier de contraintes (`extraction/constraints/`), `dbt_utils` en version exacte | la collecte de prod tourne seule chaque jour avec accès à GCS et BigQuery : une version publiée en amont (casse ou paquet compromis) ne doit pas l'atteindre sans passer par une PR. Coût : régénérer locks et contraintes à chaque montée de version | versions flottantes ou plages (casse possible sans changement du dépôt), figer le seul niveau direct (dépendances transitives toujours flottantes) |
 | Collectes sérialisées dans un groupe `concurrency` unique, tous environnements et branches confondus, avec `cancel-in-progress: false` et `queue: max` | dev et prod partagent une seule clé d'API France Travail, donc un même quota. Un run en attente démarre après le précédent au lieu de l'interrompre : annuler une collecte peut laisser des fichiers partiels dans GCS ou un state Meltano à moitié écrit. Limite : un run dev lancé vers 05:00 UTC retarde la collecte de prod | un groupe par environnement (deux runs simultanés sur la même clé), annulation du run en cours |
+| Rulesets et paramètres GitHub versionnés en JSON (`infra/github/`), appliqués à la main, dérive détectée par `check.sh` | les règles Git et GitHub ne reposent plus sur la discipline : un push direct sur `main` est refusé, même pour l'administrateur (bypass vide). Les rulesets se cumulent, s'appliquent aussi aux tags et s'exportent en JSON. Comme `identity/prod`, la configuration reste hors de portée de la CI et de l'agent. Limite : la dérive n'est vue que si `check.sh` est lancé | provider Terraform `integrations/github` (token d'administration sur le poste et un state de plus, pour un seul dépôt), branch protection classique (ni tags ni cumul), configuration dans l'interface seule (ni trace ni contrôle) |
 | Règles des assistants IA dans `.continue/rules/`, `.claude/rules` en lien symbolique, `AGENTS.md` à la racine importé par `CLAUDE.md` | une seule source lue nativement par Claude Code et Continue (LLM local) ; chaque règle porte `paths:` et `globs:` pour n'être chargée que sur son périmètre | `uses:` dans l'agent Continue (chemins relatifs cassés par un bug de Continue), un CLAUDE.md par sous-dossier (ignoré par Continue) |
 
 **Laissé de côté volontairement :** environnement de recette, orchestrateur managé, GPU cloud, Secret Manager.
