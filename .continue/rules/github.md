@@ -51,6 +51,7 @@ Interdit :
 - lire, créer, modifier ou supprimer des secrets et variables (`gh secret`, `gh variable`) ;
 - modifier les paramètres du dépôt, la protection de branches, les environments ou les droits d'accès, y compris via `gh api` ;
 - `gh pr merge --admin` ou tout contournement des protections ;
-- approuver une PR.
+- approuver une PR ;
+- ajouter une mention d'outil (« Generated with … ») dans la description d'une PR ou d'une issue.
 
 Si la CI échoue : lire les logs, expliquer la cause et proposer un correctif. Ne pas relancer en boucle, ni affaiblir un test ou un check pour obtenir du vert.
