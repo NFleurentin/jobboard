@@ -5,6 +5,7 @@ Rulesets et paramètres du dépôt, versionnés pour être relus en PR, réappli
 | Fichier | Contenu |
 |---|---|
 | `ruleset-main.json` | Ruleset de `main` : PR obligatoire (0 approbation, conversations résolues, squash seul), historique linéaire, suppression et push forcé interdits, bypass vide |
+| `ruleset-release-tags.json` | Ruleset des tags de release `v*` : ni suppression, ni déplacement (mise à jour et push forcé interdits), bypass vide. La création reste libre ; l'ascendance du tag sur `main` sera contrôlée au déploiement (#102) |
 | `settings.json` | Paramètres attendus, une clé par endpoint de l'API (`repos/<dépôt>/<clé>`, la clé vide désigne le dépôt). Seuls les champs déclarés sont garantis |
 | `check.sh` | Compare l'état réel aux fichiers, en lecture seule. Code retour 1 en cas de dérive |
 
@@ -39,3 +40,5 @@ gh api --method POST "repos/$REPO/rulesets" --input infra/github/ruleset-main.js
 ## En cas de blocage
 
 Le bypass est vide : le propriétaire lui-même ne peut pas contourner le ruleset. Pour débloquer une situation (merge impossible, règle mal réglée), passer le ruleset en *Disabled* dans *Settings → Rules → Rulesets*, corriger, puis le réactiver et relancer `check.sh`.
+
+Un tag `v*` erroné (mauvais commit, mauvais numéro) ne peut ni être supprimé ni être déplacé. Préférer publier une nouvelle version corrective. S'il faut vraiment le retirer : désactiver le ruleset `release-tags`, supprimer le tag (`git push origin --delete <tag>`) et la release associée, puis réactiver le ruleset et relancer `check.sh`.
