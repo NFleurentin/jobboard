@@ -19,7 +19,7 @@ Tout changement arrive sur `main` par une pull request, jamais par un push direc
 - Une PR = un sujet, de petite taille. Ouverte en draft tant qu'elle n'est pas prête à être relue.
 - Titre en anglais au format Conventional Commits (`git.md`) : avec le squash merge, il devient le message de commit sur `main`.
 - Description et commentaires en français. La description comporte quatre sections : Pourquoi, Quoi (sans paraphraser le diff), Comment tester, Impact (changement cassant, coût, migration, ou "Aucun").
-- Pas encore de CI : la validation locale décrite dans `AGENTS.md` en tient lieu. Projet à un seul contributeur : aucune approbation requise.
+- La CI statique (`ci.yml`) doit être verte avant le merge ; `terraform plan` et le run en dev restent locaux (`AGENTS.md`). Projet à un seul contributeur : aucune approbation requise.
 - Répondre à chaque commentaire de relecture, par un commit ou par une réponse. C'est l'auteur du commentaire qui le résout.
 
 ## Stratégie de merge
@@ -31,7 +31,7 @@ Squash merge uniquement : une PR = un commit sur `main`, annulable par un seul `
 
 ## Protection de `main`
 
-Imposée par un ruleset et des paramètres versionnés dans `infra/github/`, appliqués à la main par le propriétaire du dépôt : PR obligatoire, historique linéaire, squash merge seul, push forcé et suppression interdits, aucun contournement, y compris pour les administrateurs. Les checks de CI deviendront obligatoires dès qu'une CI existe.
+Imposée par un ruleset et des paramètres versionnés dans `infra/github/`, appliqués à la main par le propriétaire du dépôt : PR obligatoire, historique linéaire, squash merge seul, push forcé et suppression interdits, aucun contournement, y compris pour les administrateurs. Les jobs de `ci.yml` sont des checks obligatoires et la branche doit être à jour avec `main` : renommer un job impose de mettre à jour le ruleset dans la même PR.
 
 L'agent ne modifie jamais cette configuration. Il signale tout écart relevé par `infra/github/check.sh`.
 

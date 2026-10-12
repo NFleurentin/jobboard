@@ -34,6 +34,31 @@
           "squash"
         ]
       }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": true,
+        "do_not_enforce_on_create": false,
+        "required_status_checks": [
+          {
+            "context": "python (loading)",
+            "integration_id": 15368
+          },
+          {
+            "context": "python (tap-francetravail)",
+            "integration_id": 15368
+          },
+          {
+            "context": "terraform",
+            "integration_id": 15368
+          },
+          {
+            "context": "dbt",
+            "integration_id": 15368
+          }
+        ]
+      }
     }
   ],
   "bypass_actors": []

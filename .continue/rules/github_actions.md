@@ -59,7 +59,7 @@ Ne jamais interpoler une donnée contrôlée par un tiers (titre de PR, nom de b
 ## Déploiement
 
 - Les déploiements (`terraform apply`, exécutions dbt et Meltano en production) passent uniquement par la CI, depuis `main`, via l'environment protégé. Seules exceptions, faute de CI possible : `bootstrap.sh` et `identity/prod` (la CI ne modifie pas sa propre porte d'entrée), appliqués à la main par le propriétaire du dépôt, jamais par un agent.
-- Sur une PR, la CI (à venir) se limite à la validation : lint, `terraform plan`, build et tests dbt dans un dataset dédié à la CI.
+- Sur une PR, la CI se limite à la validation. `ci.yml` fait la validation statique, sans credentials ni filtre `paths` (ses jobs sont des checks obligatoires) ; `terraform plan` et le build dbt dans un dataset dédié sont à venir (#104, #105).
 
 ## Garde-fous pour l'agent
 
