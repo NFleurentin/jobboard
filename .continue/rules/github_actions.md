@@ -60,7 +60,7 @@ Ne jamais interpoler une donnée contrôlée par un tiers (titre de PR, nom de b
 
 - Les déploiements (`terraform apply`, exécutions dbt et Meltano en production) passent uniquement par la CI, depuis `main`, via l'environment protégé. Seules exceptions, faute de CI possible : `bootstrap.sh` et `identity/prod` (la CI ne modifie pas sa propre porte d'entrée), appliqués à la main par le propriétaire du dépôt, jamais par un agent.
 - Le pipeline de données de prod exécute le code de la release désignée par `deploy/prod-version`, résolue et vérifiée par le job `resolve` (sans credentials) : `extract` et `load` font leur checkout sur ce SHA, jamais sur `github.ref`. Un job qui en dépend vérifie que `resolve` a réussi, faute de quoi le checkout retomberait sur `main`.
-- Sur une PR, la CI se limite à la validation. `ci.yml` fait la validation statique, sans credentials ni filtre `paths` (ses jobs sont des checks obligatoires) ; `terraform plan` et le build dbt dans un dataset dédié sont à venir (#104, #105).
+- Sur une PR, la CI se limite à la validation. `ci.yml` fait la validation statique, sans credentials ni filtre `paths` (ses jobs sont des checks obligatoires) ; `dbt-pr.yml` construit les modèles dbt modifiés dans `pr_<n>`, environment `dev` ; `terraform plan` est à venir (#105).
 
 ## Garde-fous pour l'agent
 

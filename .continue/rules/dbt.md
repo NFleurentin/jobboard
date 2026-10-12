@@ -86,7 +86,7 @@ source raw.france_travail_offers_ext (table externe sur GCS)
 
 ## Environnements
 
-- Trois targets : `dev` (par défaut, dataset `analytics`), `ci` (dataset `pr_<numéro>`, déclaré mais pas encore branché sur une CI, supprimé à la fermeture de la PR), `prod` (exécuté uniquement par la CI).
+- Trois targets : `dev` (par défaut, dataset `analytics`), `ci` (dataset `pr_<numéro>` du projet de dev, construit par `ci/pr.sh` sur chaque PR qui touche `transformation/`, supprimé à sa fermeture), `prod` (exécuté uniquement par la CI).
 - Authentification `oauth` avec impersonation de `sa-dbt`. Aucun secret dans `profiles.yml`.
 - Le projet GCP vient de `GCP_PROJECT_ID`, et les targets `dev` et `prod` écrivent dans un dataset de même nom. Le target ne suffit donc pas à protéger la production : c'est la valeur de `GCP_PROJECT_ID` qui décide où dbt écrit.
 

@@ -54,4 +54,4 @@ export TAP_FRANCETRAVAIL_CLIENT_ID=... TAP_FRANCETRAVAIL_CLIENT_SECRET=...
 
 - Documentation, commentaires de code, docstrings et README **en français** ; identifiants (variables, fonctions, colonnes) en anglais.
 - Une décision de conception nouvelle ou modifiée se reporte dans la table « Choix techniques et compromis » du README, et la liste « Avancement » se met à jour en même temps que le code.
-- Chaque PR passe par [ci.yml](.github/workflows/ci.yml), validation statique sans accès à GCP (Python, Terraform, `dbt parse`/`lint`/`format`). Elle ne remplace pas `terraform plan` ni un run en dev, à valider localement avant de proposer une PR quand le changement les concerne.
+- Chaque PR passe par [ci.yml](.github/workflows/ci.yml), validation statique sans accès à GCP (Python, Terraform, `dbt parse`/`lint`/`format`). Une PR qui touche `transformation/` passe aussi par [dbt-pr.yml](.github/workflows/dbt-pr.yml) : build des modèles modifiés dans `pr_<n>` du projet de dev, par `transformation/ci/pr.sh`. Ni l'un ni l'autre ne remplace `terraform plan` ni un run en dev, à valider localement avant de proposer une PR quand le changement les concerne.
