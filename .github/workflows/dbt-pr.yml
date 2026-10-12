@@ -1,0 +1,105 @@
+name: dbt PR
+
+# Build dbt des pull requests dans le dataset pr_<numéro> du projet de dev (issue #104) :
+# modèles modifiés et descendants, le reste lu dans analytics (--defer). Le dataset est
+# supprimé à la fermeture de la PR. Logique dans transformation/ci/pr.sh.
+# Filtre paths possible : ce workflow ne porte aucun check obligatoire du ruleset de main.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, closed]
+    paths:
+      - "transformation/**"
+      - ".github/workflows/dbt-pr.yml"
+
+# Un push annule le build en cours ; la fermeture annule le build avant de supprimer le dataset
+concurrency:
+  group: dbt-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write # requis pour obtenir le jeton OIDC (Workload Identity Federation)
+    # dev : sa-dbt du projet de dev, sans approbation. Jamais d'environment de prod sur une PR.
+    environment: dev
+    defaults:
+      run:
+        working-directory: transformation
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # commit de base requis par pr.sh (manifest de référence)
+          persist-credentials: false # ce job ne pousse rien : pas de jeton gardé sur le runner
+
+      # Installations avant l'authentification GCP : le code téléchargé ne voit pas les credentials
+      - name: Lire la version de dbt Fusion
+        run: grep -E '^DBT_(VERSION|SHA256)=' dbt-fusion.env >> "$GITHUB_ENV"
+
+      - name: Installer dbt Fusion
+        run: |
+          archive="$RUNNER_TEMP/dbt.tar.gz"
+          curl -fsSL -o "$archive" \
+            "https://public.cdn.getdbt.com/fs/cli/fs-v${DBT_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          echo "${DBT_SHA256}  ${archive}" | sha256sum --check
+          mkdir -p "$RUNNER_TEMP/dbt"
+          tar -C "$RUNNER_TEMP/dbt" -xzf "$archive"
+          echo "$RUNNER_TEMP/dbt" >> "$GITHUB_PATH"
+
+      - name: Installer les paquets dbt (versions figées par package-lock.yml)
+        run: dbt deps
+
+      - name: Authentification GCP (Workload Identity Federation)
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DBT_SA }}
+
+      - name: Build des modèles modifiés dans pr_<numéro>
+        run: ./ci/pr.sh build
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+
+  drop:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write # requis pour obtenir le jeton OIDC (Workload Identity Federation)
+    environment: dev
+    defaults:
+      run:
+        working-directory: transformation
+
+    steps:
+      # head.sha plutôt que la référence de merge : refs/pull/<n>/head reste disponible
+      # après la fermeture de la PR et la suppression de la branche.
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Authentification GCP (Workload Identity Federation)
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DBT_SA }}
+
+      - name: Suppression du dataset pr_<numéro>
+        run: ./ci/pr.sh drop
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
