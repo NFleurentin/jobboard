@@ -6,6 +6,7 @@
 -- Exclut volontairement : contact_*/agency_* (données personnelles, pas
 -- utiles pour un rapport de marché) et les champs composites JSON bruts
 -- (à réintroduire via des tables de pont dédiées si besoin, plus tard).
+-- TEST CI #104 : commentaire temporaire, retiré avant le merge.
 
 WITH france_travail AS (
 
