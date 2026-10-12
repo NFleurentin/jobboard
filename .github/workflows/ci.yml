@@ -108,13 +108,14 @@ jobs:
       GCP_PROJECT_ID: ci-no-connection
       # Exigée par eph_france_travail__offers.sql (fournie par load.py en exécution réelle)
       DBT_CI_VARS: '{ingested_at: "19700101T000000Z"}'
-      # Même installation que le job load du pipeline (à mutualiser avec #102)
-      DBT_VERSION: "2.0.6"
-      DBT_SHA256: "64611a38348383eae86a4834611cfc786f96cdbc907fbdf93825c5560d20c197"
 
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Même version que le pipeline de prod : la CI valide ce qui sera exécuté
+      - name: Lire la version de dbt Fusion
+        run: grep -E '^DBT_(VERSION|SHA256)=' dbt-fusion.env >> "$GITHUB_ENV"
 
       - name: Installer dbt Fusion
         run: |

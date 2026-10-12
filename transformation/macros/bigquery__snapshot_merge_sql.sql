@@ -2,7 +2,8 @@
     Surcharge de la macro interne de dbt qui écrit le MERGE final d'un
     snapshot (issue #80). Copie de default__snapshot_merge_sql de Fusion
     2.0.6, à un déplacement près : le filtre sur les versions ouvertes
-    passe du WHEN MATCHED au ON.
+    passe du WHEN MATCHED au ON. La version installée est fixée dans
+    dbt-fusion.env : la comparer à l'original à chaque changement.
 
     Dans un WHEN MATCHED, ce filtre n'élague aucune partition : le MERGE
     lisait toute la table, _raw compris, alors que le snapshot est
