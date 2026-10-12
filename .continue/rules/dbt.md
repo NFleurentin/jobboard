@@ -93,6 +93,7 @@ source raw.france_travail_offers_ext (table externe sur GCS)
 ## Paquets et Fusion
 
 - Version fixée pour chaque paquet dans `packages.yml`. `package-lock.yml` est versionné.
+- La version de Fusion utilisée par la CI et le pipeline est fixée, avec son empreinte, dans `transformation/dbt-fusion.env`. Une montée de version se fait dans ce seul fichier, par une PR qui relit aussi la surcharge `bigquery__snapshot_merge_sql`.
 - dbt change de moteur et de spécification YAML entre versions majeures. Vérifier la version installée (`dbt --version`) et la documentation correspondante avant de proposer une syntaxe. Pas de changement de version majeure sans PR dédiée.
 - `dbt_utils.generate_surrogate_key` échoue sous Fusion sur BigQuery : clé faite main `to_hex(md5(COALESCE(...) || '-' || COALESCE(...)))`.
 - Tests au format récent : `data_tests:` et paramètres sous `arguments:` (ex. `accepted_values`, `relationships`) ; la sévérité se règle sous `config:`.
