@@ -11,6 +11,7 @@ Pipeline ELT d'offres d'emploi (API France Travail → GCS → BigQuery → dbt)
 | `extraction/` | Projet Meltano + tap Singer maison | [meltano.md](.continue/rules/meltano.md) |
 | `loading/` | `load.py` : runs terminés → snapshot dbt (garde-fou de volume, `dbt snapshot`, `dbt build`) | ci-dessous |
 | `transformation/` | Transformations BigQuery (dbt Fusion) | [dbt.md](.continue/rules/dbt.md) |
+| `deploy/` | Version de prod (`prod-version`) et son contrôle (`resolve-prod-ref.sh`) | [README](deploy/README.md) |
 | `enrichment/`, `oracle/`, `orchestration/` | Vides (`.gitkeep`), à venir | |
 | `.github/workflows/` | Collecte quotidienne en prod, test WIF | [github_actions.md](.continue/rules/github_actions.md) |
 
@@ -20,6 +21,7 @@ Pipeline ELT d'offres d'emploi (API France Travail → GCS → BigQuery → dbt)
 - Travailler en **dev**. L'agent ne lance **jamais** de commande visant la prod depuis le poste local (`terraform plan`/`apply` dans `envs/prod` ou `identity/prod`, `run.sh`/`load.py` ou dbt avec le projet de prod) : la prod passe par la CI. Les opérations qui n'ont pas de CI (`bootstrap.sh`, `identity/prod`) sont lancées à la main par le propriétaire du dépôt.
 - Sur dev, toute commande qui écrit ou peut coûter (`run.sh`, `load.py`, `terraform apply`, `dbt build`/`snapshot`, requête `bq`) demande une confirmation explicite ; le détail par outil est dans les règles.
 - Le pipeline de prod tourne chaque jour à 05:00 UTC via [pipeline-france-travail.yml](.github/workflows/pipeline-france-travail.yml) : job `extract` dans le GitHub Environment `prod-collect` (`sa-extract`), puis job `load` dans `prod-load` (`sa-dbt`), lancé même si la collecte échoue pour rattraper les runs en attente. Temporairement, `load` est sauté sur le schedule : le chargement de prod est lancé à la main par le propriétaire du dépôt (`--ref main -f environment=prod -f load_only=true`). Un lancement manuel (`gh workflow run pipeline-france-travail.yml --ref <branche> -f environment=dev`) exécute le pipeline en dev depuis n'importe quelle branche, pour valider une modification du workflow avant le merge ; `-f load_only=true` saute la collecte.
+- En prod, le workflow vient de `main` mais le code exécuté est celui de la release désignée par `deploy/prod-version` ([deploy/README.md](deploy/README.md)). Une PR qui modifie les étapes du workflow reste compatible avec cette version. Créer un tag `v*` ou une release (définitifs) et modifier `deploy/prod-version` (mise en prod) demandent une confirmation explicite.
 
 ## Exécution d'un run (extraction + chargement)
 

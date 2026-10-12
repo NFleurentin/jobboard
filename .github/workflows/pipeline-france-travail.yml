@@ -25,7 +25,39 @@ permissions:
   contents: read
 
 jobs:
+  # Choisit le commit exécuté par les autres jobs : en prod, le tag de deploy/prod-version,
+  # vérifié par deploy/resolve-prod-ref.sh (lu depuis main, jamais depuis le tag) ; en dev,
+  # la branche lancée. Volontairement sans environment ni id-token : aucun credential.
+  resolve:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # historique complet et tags : requis par resolve-prod-ref.sh
+          persist-credentials: false # ce job ne pousse rien : pas de jeton gardé sur le runner
+
+      - name: Résoudre le commit à exécuter
+        id: resolve
+        env:
+          TARGET_ENV: ${{ inputs.environment == 'dev' && 'dev' || 'prod' }}
+        run: |
+          if [[ $TARGET_ENV == dev ]]; then
+            sha=$GITHUB_SHA
+          else
+            sha=$(deploy/resolve-prod-ref.sh)
+          fi
+          echo "sha=${sha}" >> "$GITHUB_OUTPUT"
+          echo "Commit exécuté : ${sha} (${TARGET_ENV})" >> "$GITHUB_STEP_SUMMARY"
+
   extract:
+    needs: resolve
     if: ${{ !inputs.load_only }}
     runs-on: ubuntu-26.04
     timeout-minutes: 20
@@ -42,6 +74,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
 
       - name: Générer les identifiants du run
         run: |
@@ -78,11 +112,13 @@ jobs:
           TAP_FRANCETRAVAIL_CLIENT_SECRET: ${{ secrets.TAP_FRANCETRAVAIL_CLIENT_SECRET }}
 
   load:
-    needs: extract
+    needs: [resolve, extract]
     # Tourne aussi après une collecte en échec ou sautée (load_only) : load.py ne lit
     # que les runs terminés (_SUCCESS) et rattrape ceux en attente. Pas après une annulation.
     # Temporaire : sauté sur le schedule, le chargement ne se lance qu'à la main.
-    if: ${{ !cancelled() && github.event_name != 'schedule' }}
+    # !cancelled() lève la condition implicite success() : resolve est donc vérifié
+    # explicitement. Sans son SHA, le checkout prendrait main au lieu de la version pointée.
+    if: ${{ !cancelled() && github.event_name != 'schedule' && needs.resolve.result == 'success' }}
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     permissions:
@@ -98,6 +134,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
 
       # Installations avant l'authentification GCP : le code téléchargé ne voit pas les credentials
       - name: Installer uv
