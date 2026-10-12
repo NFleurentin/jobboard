@@ -70,6 +70,9 @@ jobs:
           GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          # Compte actif pour gcloud : sans lui, bq affiche une erreur trompeuse
+          # (config-helper) avant de lire le fichier d'identifiants de l'action auth
+          CLOUDSDK_CORE_ACCOUNT: ${{ vars.DBT_SA }}
 
   drop:
     if: github.event.action == 'closed'
@@ -103,3 +106,4 @@ jobs:
         env:
           GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          CLOUDSDK_CORE_ACCOUNT: ${{ vars.DBT_SA }} # voir le job build
