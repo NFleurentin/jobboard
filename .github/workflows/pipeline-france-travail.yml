@@ -94,11 +94,6 @@ jobs:
     env:
       GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
       DBT_TARGET: ${{ inputs.environment == 'dev' && 'dev' || 'prod' }}
-      # dbt Fusion n'est pas un paquet Python : archive officielle, version et empreinte figées
-      # (empreinte publiée par le CDN dans <archive>.sha256). Le script d'installation de dbt Labs
-      # n'est pas utilisé : il ne vérifie pas l'empreinte et installe jq au passage.
-      DBT_VERSION: "2.0.6"
-      DBT_SHA256: "64611a38348383eae86a4834611cfc786f96cdbc907fbdf93825c5560d20c197"
 
     steps:
       - name: Checkout
@@ -114,6 +109,12 @@ jobs:
         working-directory: loading
         run: uv sync --frozen
 
+      # Version et empreinte lues dans le code extrait, pas dans ce YAML : elles suivent le code exécuté
+      - name: Lire la version de dbt Fusion
+        run: grep -E '^DBT_(VERSION|SHA256)=' transformation/dbt-fusion.env >> "$GITHUB_ENV"
+
+      # Le script d'installation de dbt Labs n'est pas utilisé : il ne vérifie pas l'empreinte
+      # et installe jq au passage.
       - name: Installer dbt Fusion
         run: |
           archive="$RUNNER_TEMP/dbt.tar.gz"
