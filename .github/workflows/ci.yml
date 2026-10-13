@@ -61,15 +61,13 @@ jobs:
     name: terraform
     runs-on: ubuntu-26.04
     timeout-minutes: 10
-    env:
-      # Archive officielle, version et empreinte figées (publiée dans terraform_<version>_SHA256SUMS).
-      # Pas d'action setup-terraform : hashicorp/* n'est pas dans les actions autorisées du dépôt.
-      TF_VERSION: "1.16.5"
-      TF_SHA256: "2bc2fcfff033265c9e02ca0351f01794eb122f62a9b2a49a3294b9e49eaab5e4"
 
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Lire la version de Terraform
+        run: grep -E '^TF_(VERSION|SHA256)=' infra/terraform.env >> "$GITHUB_ENV"
 
       - name: Installer Terraform
         run: |
