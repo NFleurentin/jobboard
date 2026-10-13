@@ -44,6 +44,7 @@ cd infra/envs/dev && terraform init && terraform plan
 - Backend distant sur `gs://<projet>-tfstate` (créé par `bootstrap.sh`), un state par environnement. Le state contient des valeurs sensibles en clair.
 - Ne jamais modifier le state à la main. Pour renommer ou adopter une ressource, utiliser les blocs `moved` et `import` dans le code : ils sont relus en PR et visibles dans le plan.
 - Versions fixées avec `~>` dans chaque module racine : Terraform `~> 1.6`, provider google `~> 8.4`. `.terraform.lock.hcl` est versionné dans les modules racines uniquement (ignoré dans `modules/`). Une montée de version de provider fait l'objet d'une PR dédiée.
+- La version de Terraform utilisée par la CI est fixée, avec son empreinte, dans `infra/terraform.env`. Tout workflow qui installe Terraform la lit dans ce fichier, et une montée de version se fait dans ce seul fichier.
 
 ## Conventions de code
 
