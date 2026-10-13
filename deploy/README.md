@@ -30,7 +30,7 @@ SemVer, en version 0.x tant que les marts ne sont pas stabilisés (le passage en
 
 ## Publier une release
 
-Les tags `v*` sont protégés par le ruleset `release-tags` (`infra/github/`) : une fois poussé, un tag ne peut être ni supprimé ni déplacé.
+Les tags `v*` sont protégés par le ruleset `release-tags` (`.github/settings/`) : une fois poussé, un tag ne peut être ni supprimé ni déplacé.
 
 ```bash
 git switch main && git pull --rebase

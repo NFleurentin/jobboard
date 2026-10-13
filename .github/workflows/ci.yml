@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   python:
-    # Nom figé : check obligatoire dans infra/github/ruleset-main.json
+    # Nom figé : check obligatoire dans .github/settings/ruleset-main.json
     name: python (${{ matrix.name }})
     runs-on: ubuntu-26.04
     timeout-minutes: 10
@@ -57,7 +57,7 @@ jobs:
         run: uv run --frozen pytest
 
   terraform:
-    # Nom figé : check obligatoire dans infra/github/ruleset-main.json
+    # Nom figé : check obligatoire dans .github/settings/ruleset-main.json
     name: terraform
     runs-on: ubuntu-26.04
     timeout-minutes: 10
@@ -94,7 +94,7 @@ jobs:
           done
 
   dbt:
-    # Nom figé : check obligatoire dans infra/github/ruleset-main.json
+    # Nom figé : check obligatoire dans .github/settings/ruleset-main.json
     name: dbt
     runs-on: ubuntu-26.04
     timeout-minutes: 10

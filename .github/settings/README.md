@@ -12,7 +12,7 @@ Rulesets et paramètres du dépôt, versionnés pour être relus en PR, réappli
 ## Vérifier
 
 ```bash
-infra/github/check.sh
+.github/settings/check.sh
 ```
 
 Prérequis : `gh` authentifié avec un compte administrateur du dépôt (les endpoints Actions et sécurité l'exigent), `jq`.
@@ -32,9 +32,9 @@ Prérequis : `gh` authentifié avec un compte administrateur du dépôt (les end
 ```bash
 REPO=NFleurentin/jobboard
 id=$(gh api "repos/$REPO/rulesets" --jq '.[] | select(.name == "main") | .id')
-gh api --method PUT "repos/$REPO/rulesets/$id" --input infra/github/ruleset-main.json
+gh api --method PUT "repos/$REPO/rulesets/$id" --input .github/settings/ruleset-main.json
 # Ruleset absent : création
-gh api --method POST "repos/$REPO/rulesets" --input infra/github/ruleset-main.json
+gh api --method POST "repos/$REPO/rulesets" --input .github/settings/ruleset-main.json
 ```
 
 ## En cas de blocage
