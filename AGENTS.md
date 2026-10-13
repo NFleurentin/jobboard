@@ -7,13 +7,13 @@ Pipeline ELT d'offres d'emploi (API France Travail → GCS → BigQuery → dbt)
 | Dossier | Contenu | Détails |
 |---|---|---|
 | `infra/` | Terraform (bootstrap, modules, `envs/`, `identity/`) | [terraform_gcp.md](.continue/rules/terraform_gcp.md) |
-| `infra/github/` | Rulesets et paramètres du dépôt GitHub, appliqués à la main, `check.sh` pour la dérive | [README](infra/github/README.md) |
 | `extraction/` | Projet Meltano + tap Singer maison | [meltano.md](.continue/rules/meltano.md) |
 | `loading/` | `load.py` : runs terminés → snapshot dbt (garde-fou de volume, `dbt snapshot`, `dbt build`) | ci-dessous |
 | `transformation/` | Transformations BigQuery (dbt Fusion) | [dbt.md](.continue/rules/dbt.md) |
 | `deploy/` | Version de prod (`prod-version`) et son contrôle (`resolve-prod-ref.sh`) | [README](deploy/README.md) |
 | `enrichment/`, `oracle/`, `orchestration/` | Vides (`.gitkeep`), à venir | |
 | `.github/workflows/` | Collecte quotidienne en prod, test WIF | [github_actions.md](.continue/rules/github_actions.md) |
+| `.github/settings/` | Rulesets et paramètres du dépôt GitHub, appliqués à la main, `check.sh` pour la dérive | [README](.github/settings/README.md) |
 
 ## Environnements
 
@@ -47,7 +47,7 @@ export TAP_FRANCETRAVAIL_CLIENT_ID=... TAP_FRANCETRAVAIL_CLIENT_SECRET=...
 ## Règles par outil
 
 - Les règles sont dans [.continue/rules/](.continue/rules/), lu nativement par Continue. `.claude/rules` est un lien symbolique vers ce dossier, et `CLAUDE.md` se limite à importer ce fichier : Claude Code et Continue lisent les mêmes fichiers.
-- `git.md` et `github.md` sont toujours chargées. Les autres, dont `github_actions.md` pour `.github/`, ne le sont que lorsqu'un fichier de leur périmètre est en jeu : chaque règle à périmètre porte la même liste sous deux clés, `paths:` (Claude Code) et `globs:` (Continue), à garder identiques.
+- `git.md` et `github.md` sont toujours chargées. Les autres, dont `github_actions.md` pour `.github/workflows/`, ne le sont que lorsqu'un fichier de leur périmètre est en jeu : chaque règle à périmètre porte la même liste sous deux clés, `paths:` (Claude Code) et `globs:` (Continue), à garder identiques.
 - Une règle ne contient que ce qui est propre à ce dépôt, s'écarte de la convention de l'outil ou sert de garde-fou : les conventions courantes, que les modèles connaissent, n'y sont pas recopiées. Chaque règle est injectée dans le contexte, et un modèle local en a peu. Ce fichier ne garde que le transverse : ne pas y recopier une règle.
 
 ## Conventions

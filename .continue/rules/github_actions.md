@@ -1,8 +1,10 @@
 ---
 paths:
-  - ".github/**"
+  - ".github/workflows/**"
+  - ".github/dependabot.yml"
 globs:
-  - ".github/**"
+  - ".github/workflows/**"
+  - ".github/dependabot.yml"
 ---
 
 # Règles GitHub Actions
@@ -64,7 +66,7 @@ Ne jamais interpoler une donnée contrôlée par un tiers (titre de PR, nom de b
 
 ## Garde-fous pour l'agent
 
-Toute création ou modification d'un fichier sous `.github/` : exposer le plan et les impacts de sécurité avant d'écrire.
+Toute création ou modification d'un workflow ou de `.github/dependabot.yml` : exposer le plan et les impacts de sécurité avant d'écrire.
 
 Interdit :
 

@@ -31,13 +31,13 @@ Squash merge uniquement : une PR = un commit sur `main`, annulable par un seul `
 
 ## Protection de `main`
 
-Imposée par un ruleset et des paramètres versionnés dans `infra/github/`, appliqués à la main par le propriétaire du dépôt : PR obligatoire, historique linéaire, squash merge seul, push forcé et suppression interdits, aucun contournement, y compris pour les administrateurs. Les jobs de `ci.yml` sont des checks obligatoires et la branche doit être à jour avec `main` : renommer un job impose de mettre à jour le ruleset dans la même PR.
+Imposée par un ruleset et des paramètres versionnés dans `.github/settings/`, appliqués à la main par le propriétaire du dépôt : PR obligatoire, historique linéaire, squash merge seul, push forcé et suppression interdits, aucun contournement, y compris pour les administrateurs. Les jobs de `ci.yml` sont des checks obligatoires et la branche doit être à jour avec `main` : renommer un job impose de mettre à jour le ruleset dans la même PR.
 
-L'agent ne modifie jamais cette configuration. Il signale tout écart relevé par `infra/github/check.sh`.
+L'agent ne modifie jamais cette configuration. Il signale tout écart relevé par `.github/settings/check.sh`.
 
 ## Garde-fous pour l'agent
 
-Autorisé sans confirmation, en lecture seule : `gh pr view`, `gh pr list`, `gh pr diff`, `gh pr checks`, `gh run list`, `gh run view`, `gh issue view`, `gh issue list`, `infra/github/check.sh`.
+Autorisé sans confirmation, en lecture seule : `gh pr view`, `gh pr list`, `gh pr diff`, `gh pr checks`, `gh run list`, `gh run view`, `gh issue view`, `gh issue list`, `.github/settings/check.sh`.
 
 Demander une confirmation explicite avant :
 
