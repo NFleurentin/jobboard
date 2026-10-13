@@ -1,0 +1,66 @@
+name: terraform PR
+
+# Plan Terraform des pull requests sur le projet de dev (issue #105) : rien n'est appliqué,
+# le plan est publié dans le résumé du job. Logique dans infra/ci/plan.sh.
+# Pas de plan prod : le WIF de prod n'accepte que main. Pas de commentaire de PR : il
+# exigerait pull-requests: write.
+# Filtre paths possible : ce workflow ne porte aucun check obligatoire du ruleset de main.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "infra/envs/dev/**"
+      - "infra/modules/**"
+      - "infra/ci/plan.sh"
+      - "infra/terraform.env"
+      - ".github/workflows/terraform-pr.yml"
+
+# Un push annule le plan en cours, sans risque : le plan ne prend pas le verrou du state
+concurrency:
+  group: terraform-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write # requis pour obtenir le jeton OIDC (Workload Identity Federation)
+    # dev : sa-deployer du projet de dev, sans approbation. Jamais d'environment de prod sur une PR.
+    environment: dev
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false # ce job ne pousse rien : pas de jeton gardé sur le runner
+
+      # Installation avant l'authentification GCP : le code téléchargé ne voit pas les credentials
+      - name: Lire la version de Terraform
+        run: grep -E '^TF_(VERSION|SHA256)=' infra/terraform.env >> "$GITHUB_ENV"
+
+      - name: Installer Terraform
+        run: |
+          archive="$RUNNER_TEMP/terraform.zip"
+          curl -fsSL -o "$archive" \
+            "https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip"
+          echo "${TF_SHA256}  ${archive}" | sha256sum --check
+          mkdir -p "$RUNNER_TEMP/terraform"
+          unzip -q -d "$RUNNER_TEMP/terraform" "$archive"
+          echo "$RUNNER_TEMP/terraform" >> "$GITHUB_PATH"
+
+      - name: Authentification GCP (Workload Identity Federation)
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOYER_SA }}
+
+      - name: Plan de envs/dev
+        run: ./infra/ci/plan.sh envs/dev
+        env:
+          # Secret plutôt que variable : adresse personnelle, masquée dans les logs
+          TF_VAR_user_email: ${{ secrets.TF_VAR_USER_EMAIL }}
