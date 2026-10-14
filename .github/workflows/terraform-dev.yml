@@ -1,0 +1,37 @@
+name: terraform dev
+
+# Apply automatique de envs/dev au merge sur main (issue #106), sans approbation : le dev
+# suit main. Plan et apply dans terraform-apply.yml.
+# workflow_dispatch : lancement depuis une branche pour valider une modification de ce
+# chemin avant le merge (le WIF de dev n'impose pas de branche).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infra/envs/dev/**"
+      - "infra/modules/**"
+      - "infra/ci/plan.sh"
+      - "infra/terraform.env"
+      - ".github/workflows/terraform-dev.yml"
+      - ".github/workflows/terraform-apply.yml"
+  workflow_dispatch:
+
+# Jamais d'annulation : un apply interrompu peut laisser le state verrouillé
+concurrency:
+  group: terraform-dev
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    permissions:
+      contents: read
+      id-token: write # transmis aux jobs du workflow appelé (Workload Identity Federation)
+    uses: ./.github/workflows/terraform-apply.yml
+    with:
+      environment: dev
+      ref: ${{ github.sha }}
+    # Pas de secrets: inherit : TF_VAR_USER_EMAIL est un secret de l'environment dev,
+    # lu directement par les jobs du workflow appelé qui le déclarent
