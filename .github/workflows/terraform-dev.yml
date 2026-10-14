@@ -33,5 +33,6 @@ jobs:
     with:
       environment: dev
       ref: ${{ github.sha }}
-    # Pas de secrets: inherit : TF_VAR_USER_EMAIL est un secret de l'environment dev,
-    # lu directement par les jobs du workflow appelé qui le déclarent
+    # Sans inherit, le contexte secrets du workflow appelé reste vide, y compris les secrets
+    # de l'environment déclaré par ses jobs (TF_VAR_USER_EMAIL) ; les variables, elles, passent
+    secrets: inherit

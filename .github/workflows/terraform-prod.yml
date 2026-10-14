@@ -58,3 +58,6 @@ jobs:
     with:
       environment: prod
       ref: ${{ needs.resolve.outputs.sha }}
+    # Sans inherit, le contexte secrets du workflow appelé reste vide, y compris les secrets
+    # de l'environment prod déclaré par ses jobs (TF_VAR_USER_EMAIL)
+    secrets: inherit
