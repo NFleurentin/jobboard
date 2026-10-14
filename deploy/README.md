@@ -5,7 +5,7 @@ La prod n'exécute pas le dernier commit de `main`, mais une **release** : un ta
 | Fichier | Contenu |
 |---|---|
 | `prod-version` | Tag de la version de prod, sur une seule ligne. Modifié uniquement par PR |
-| `resolve-prod-ref.sh` | Vérifie le tag pointé et affiche le SHA du commit à exécuter. Appelé par le job `resolve` du pipeline |
+| `resolve-prod-ref.sh` | Vérifie le tag pointé et affiche le SHA du commit à exécuter. Appelé par le job `resolve` du pipeline et de `terraform-prod.yml` |
 
 ## Fonctionnement
 
@@ -42,11 +42,13 @@ gh release create vX.Y.Z --verify-tag --generate-notes --title "vX.Y.Z"
 
 `gh release create --target` seul crée un tag léger, refusé par `resolve-prod-ref.sh` : toujours créer le tag avant la release, et passer `--verify-tag`.
 
+Une release ne contient que des changements d'infra compatibles avec la version précédente (règle expand/contract, `.continue/rules/github_actions.md`) : une ressource se supprime dans une release ultérieure à celle qui a cessé de l'utiliser.
+
 Les notes de release signalent tout changement de schéma (snapshot, marts, state Meltano) : ces données ne sont pas versionnées, et un retour à une version antérieure peut échouer après un tel changement.
 
 ## Promouvoir et revenir en arrière
 
-- **Promotion** : PR qui remplace la version dans `prod-version` (`ci: promote vX.Y.Z to prod`). Elle prend effet au run suivant (schedule de 05:00 UTC ou lancement manuel en prod).
+- **Promotion** : PR qui remplace la version dans `prod-version` (`ci: promote vX.Y.Z to prod`). Son merge lance `terraform-prod.yml`, qui applique l'infra de la release (`infra/envs/prod`) en deux approbations de l'environment `prod` : la première lance le plan, la seconde l'applique après lecture du résumé du job (pas de seconde approbation si le plan est vide). Le code prend effet au run suivant du pipeline (schedule de 05:00 UTC ou lancement manuel en prod) : approuver l'apply avant ce run.
 - **Retour arrière** : `git revert` de la PR de promotion, ou nouvelle PR vers la version précédente.
 
 Avant de créer le tag, le commit visé peut être validé en dev : `gh workflow run pipeline-france-travail.yml --ref main -f environment=dev`.

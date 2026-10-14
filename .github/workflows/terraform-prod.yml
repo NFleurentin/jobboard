@@ -1,0 +1,60 @@
+name: terraform prod
+
+# Apply de envs/prod au code de la release promue (issue #106) : déclenché par le merge
+# d'une modification de deploy/prod-version, jamais par un merge de code Terraform. L'infra
+# de prod suit ainsi le code exécuté par le pipeline. Plan et apply dans
+# terraform-apply.yml, chacun après approbation de l'environment prod.
+# workflow_dispatch depuis main : relance (apply échoué, empreinte différente, dérive).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "deploy/prod-version"
+  workflow_dispatch:
+
+# Jamais d'annulation : un apply interrompu peut laisser le state verrouillé
+concurrency:
+  group: terraform-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # Même résolution que le pipeline : tag de deploy/prod-version vérifié par
+  # deploy/resolve-prod-ref.sh, lu depuis main, jamais depuis le tag. Sans credentials.
+  resolve:
+    # Défense en plus de la règle de branche de l'environment prod et du WIF
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # historique complet et tags : requis par resolve-prod-ref.sh
+          persist-credentials: false # ce job ne pousse rien : pas de jeton gardé sur le runner
+
+      - name: Résoudre le commit à déployer
+        id: resolve
+        run: |
+          sha=$(deploy/resolve-prod-ref.sh)
+          echo "sha=${sha}" >> "$GITHUB_OUTPUT"
+          echo "Commit déployé : ${sha} ($(<deploy/prod-version))" >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    needs: resolve
+    # Explicite : sans le SHA de resolve, le checkout prendrait main au lieu de la release
+    if: needs.resolve.result == 'success'
+    permissions:
+      contents: read
+      id-token: write # transmis aux jobs du workflow appelé (Workload Identity Federation)
+    uses: ./.github/workflows/terraform-apply.yml
+    with:
+      environment: prod
+      ref: ${{ needs.resolve.outputs.sha }}
