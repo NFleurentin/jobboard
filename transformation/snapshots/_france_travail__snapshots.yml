@@ -11,7 +11,7 @@ snapshots:
     description: >
       Historique SCD2 minimal des offres France Travail : garde _raw tel
       quel (STRING, pas JSON natif) à chaque version, sans extraire les
-      champs métier (voir stg_france_travail_offers). Stratégie check sur
+      champs métier (voir stg_france_travail__offers). Stratégie check sur
       updated_at (dateActualisation) : une nouvelle version est créée dès
       que ce champ change. Toutes les bornes (dbt_valid_from, dbt_valid_to
       d'une version remplacée ou d'une offre absente) valent le jour

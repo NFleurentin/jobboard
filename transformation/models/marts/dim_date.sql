@@ -5,8 +5,11 @@
 -- start_date dynamique, décidé explicitement par is_incremental() (pas de
 -- variable intermédiaire qui pourrait laisser croire qu'elle s'évalue
 -- avant que la table existe) : au premier run (table absente), plage
--- complète depuis 2015 ; ensuite, uniquement le lendemain du dernier jour
--- connu — date_spine() ne génère alors que les jours réellement manquants.
+-- complète depuis la var dim_date_start_date ; ensuite, uniquement le
+-- lendemain du dernier jour connu — date_spine() ne génère alors que les
+-- jours réellement manquants.
+-- Reculer dim_date_start_date n'ajoute rien à une table existante : les
+-- jours antérieurs n'apparaissent qu'après un --full-refresh.
 
 {{
     config(
@@ -21,16 +24,16 @@ WITH spine AS (
 
     {{ dbt_utils.date_spine(
         datepart='day',
-        start_date="(select coalesce(date_add(max(date_day), interval 1 day), cast('2015-01-01' as date)) from " ~ this ~ ")",
-        end_date="date_add(current_date(), interval 1 year)"
+        start_date="(SELECT coalesce(date_add(max(date_day), INTERVAL 1 DAY), CAST('" ~ var('dim_date_start_date') ~ "' AS DATE)) FROM " ~ this ~ ")",
+        end_date="date_add(current_date(), INTERVAL 1 YEAR)"
     ) }}
 
     {% else %}
 
     {{ dbt_utils.date_spine(
         datepart='day',
-        start_date="cast('2015-01-01' as date)",
-        end_date="date_add(current_date(), interval 1 year)"
+        start_date="CAST('" ~ var('dim_date_start_date') ~ "' AS DATE)",
+        end_date="date_add(current_date(), INTERVAL 1 YEAR)"
     ) }}
 
     {% endif %}
@@ -45,7 +48,7 @@ dates AS (
     -- Garde-fou, désormais redondant en temps normal puisque start_date
     -- borne déjà la plage côté date_spine — gardé par prudence (coût nul).
     {% if is_incremental() %}
-        where cast(date_day as date) > (select max(date_day) from {{ this }})
+        WHERE CAST(date_day AS DATE) > (SELECT max(date_day) FROM {{ this }})
     {% endif %}
 )
 

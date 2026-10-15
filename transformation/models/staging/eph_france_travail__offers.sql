@@ -7,7 +7,7 @@
 -- Volontairement minimal, pas de nettoyage/typage ici : juste ce qu'il
 -- faut au snapshot (clé, payload brut, signal de changement). Le vrai
 -- travail de staging (extraction des champs) est fait après le snapshot,
--- dans stg_france_travail_offers.
+-- dans stg_france_travail__offers.
 --
 -- Le run traité est fourni par la var ingested_at (format du dossier GCS,
 -- ex. 20261008T050000Z), obligatoire : sans elle, la compilation échoue.

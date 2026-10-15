@@ -33,6 +33,8 @@ models:
         data_tests:
           - not_null
       - name: _valid_from
+        description: "Début de validité de cette version, repris de stg_ (dbt_valid_from du snapshot) : jour d'ingestion du premier run où elle a été détectée."
         data_tests:
           - not_null
       - name: _valid_to
+        description: "Fin de validité de cette version, reprise de stg_ (dbt_valid_to du snapshot), déduite et non fournie par la source. NULL si la version est toujours active."

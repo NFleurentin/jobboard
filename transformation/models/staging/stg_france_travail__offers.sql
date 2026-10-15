@@ -40,7 +40,7 @@
         materialized='incremental',
         unique_key=['offer_id', '_valid_from'],
         incremental_strategy='merge',
-        incremental_predicates=['DBT_INTERNAL_DEST._valid_to is null'],
+        incremental_predicates=['DBT_INTERNAL_DEST._valid_to IS null'],
         partition_by={'field': '_valid_to', 'data_type': 'timestamp', 'granularity': 'month'},
         cluster_by=['offer_id'],
         on_schema_change='append_new_columns'
@@ -54,10 +54,10 @@
 {%- set max_valid_to = '1970-01-01' -%}
 {%- if execute and is_incremental() -%}
     {%- set markers_query -%}
-        select
-            coalesce(max(_valid_from), timestamp('1970-01-01')) as max_valid_from,
-            coalesce(max(_valid_to), timestamp('1970-01-01')) as max_valid_to
-        from {{ this }}
+        SELECT
+            coalesce(max(_valid_from), timestamp('1970-01-01')) AS max_valid_from,
+            coalesce(max(_valid_to), timestamp('1970-01-01')) AS max_valid_to
+        FROM {{ this }}
     {%- endset -%}
     {%- set markers = run_query(markers_query).rows[0] -%}
     {%- set max_valid_from = markers['max_valid_from'] -%}
@@ -74,24 +74,24 @@ snapshot AS (
 
     {% if is_incremental() %}
 
-        select * from source
-        where
+        SELECT * FROM source
+        WHERE
             dbt_valid_from > timestamp('{{ max_valid_from }}')
             -- Redondant (valid_to > valid_from > marqueur), mais seul
             -- prédicat sur la colonne de partition du snapshot : élague.
-            and (
-                dbt_valid_to is null
-                or dbt_valid_to > timestamp('{{ max_valid_from }}')
+            AND (
+                dbt_valid_to IS null
+                OR dbt_valid_to > timestamp('{{ max_valid_from }}')
             )
 
-        union distinct
+        UNION DISTINCT
 
-        select * from source
-        where dbt_valid_to > timestamp('{{ max_valid_to }}')
+        SELECT * FROM source
+        WHERE dbt_valid_to > timestamp('{{ max_valid_to }}')
 
     {% else %}
 
-        select * from source
+        SELECT * FROM source
 
     {% endif %}
 
