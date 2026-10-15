@@ -28,18 +28,20 @@ Je suis développeur PL/SQL avec 11 ans d'expérience, en transition vers l'**an
 ```mermaid
 flowchart LR
     API[API France Travail] -->|Meltano<br/>tap custom| RAW[(GCS<br/>JSONL brut)]
-    RAW --> LLM[Enrichissement<br/>LLM open source]
-    LLM --> ENR[(GCS<br/>JSONL enrichi)]
+    RAW -.-> LLM[Enrichissement<br/>LLM open source]
+    LLM -.-> ENR[(GCS<br/>JSONL enrichi)]
     RAW -->|table externe| BQ[(BigQuery<br/>raw.france_travail_offers_ext)]
-    ENR --> BQ
+    ENR -.-> BQ
     BQ -->|dbt| MARTS[(BigQuery<br/>staging / marts)]
-    MARTS --> DASH[Dashboard]
-    MARTS -->|offres pertinentes| ORA[(Oracle<br/>APEX)]
-    ORA -->|corrections & suivi<br/>sans données sensibles| BQ
+    MARTS -.-> DASH[Dashboard]
+    MARTS -.->|offres pertinentes| ORA[(Oracle<br/>APEX)]
+    ORA -.->|corrections & suivi<br/>sans données sensibles| BQ
 ```
 
+Traits pleins : flux en place. Pointillés : flux à venir (voir [l'avancement](#avancement)).
+
 **Principes de conception**
-- **Le brut est immuable** : chaque exécution écrit dans un nouveau chemin, ce qui permet de rejouer n'importe quelle étape.
+- **Le brut n'est jamais réécrit** : chaque exécution écrit dans un nouveau chemin, ce qui permet de rejouer les étapes en aval. Le bucket `raw` est la seule copie du brut et expire après 7 jours en dev, 30 en prod : au-delà, seul le snapshot dbt garde l'historique des offres.
 - **BigQuery est la source analytique, Oracle est propriétaire des corrections humaines et du suivi de candidatures.** Un seul système de vérité par type de donnée.
 - **Deux environnements isolés** (dev et prod), un projet GCP chacun, mêmes définitions de code, configuration différente.
 - **Rien de sensible dans le dépôt, données personnelles cantonnées** : les coordonnées de contact publiées par France Travail (nom de recruteur, e-mail, téléphone) sont conservées dans le brut et extraites en staging pour mon usage personnel, mais exclues dès la couche intermédiaire, donc des marts et de toute vue publique ; mes propres contacts et notes restent dans Oracle.
@@ -50,10 +52,10 @@ flowchart LR
 |---|---|
 | Extraction | Meltano (tap Singer développé pour l'API France Travail) |
 | Stockage brut | Google Cloud Storage (JSONL) |
-| Enrichissement | LLM open source exécuté en local (Ollama ou llama.cpp), sorties structurées validées par schéma |
+| Enrichissement | LLM open source exécuté en local (Ollama ou llama.cpp), sorties structurées validées par schéma *(à venir)* |
 | Entrepôt | BigQuery (région `europe-west1`) |
 | Transformation | dbt (moteur Fusion) |
-| Application | Oracle Autonomous Database + APEX, PL/SQL |
+| Application | Oracle Autonomous Database + APEX, PL/SQL *(à venir)* |
 | Infrastructure | Terraform |
 | CI/CD | GitHub Actions, authentification GCP sans clé (Workload Identity Federation) |
 | Orchestration | Airflow *(à venir)* |
@@ -66,15 +68,20 @@ Deux environnements isolés, **un projet GCP chacun**. Le code est identique, se
 |---|---|---|
 | Rôle | bac à sable jetable, périmètre réduit | données réelles, déploiement sur approbation |
 | Rétention du brut | 7 jours | 30 jours |
-| Destruction des buckets | autorisée (`force_destroy`) | non |
+| Destruction des buckets `raw` et `enriched` | autorisée (`force_destroy`) | non |
 | Suppression de la table externe `raw.france_travail_offers_ext` par Terraform | autorisée | bloquée (`deletion_protection`) |
-| Déploiement | automatique | approbation manuelle, branche `main` uniquement |
+| Déploiement de `envs/` (plateforme) | automatique, à chaque merge sur `main` qui touche `envs/dev` ou `modules/` (`terraform-dev.yml`) | à la promotion d'une release, après approbation, branche `main` uniquement (`terraform-prod.yml`) |
+| Déploiement de `identity/` (WIF, garde-fous de coût) | à la main, en local | à la main, en local |
 
-Ce que l'infrastructure crée dans chaque projet :
-- 3 buckets GCS : `raw` (brut immuable), `enriched` (sorties du LLM) et `meltano-state` (état de l'extraction incrémentale) ;
-- le dataset BigQuery `raw` (avec la table externe sur le bucket `raw`), et en prod ceux des couches dbt (`staging`, `intermediate`, `marts`, `snapshots`) ; en dev et en CI, dbt crée lui-même son dataset unique ;
-- 3 service accounts au moindre privilège : `sa-extract`, `sa-dbt`, `sa-enrich` ;
-- un service account de déploiement `sa-deployer` et un pool Workload Identity Federation, limités à ce dépôt, à des GitHub Environments précis et, en prod, à la branche `main`.
+Ce qui est créé dans chaque projet, par couche :
+- **`infra/bootstrap/bootstrap.sh`**, une seule fois (hors Terraform) : le projet, l'activation des API et le bucket `tfstate` qui porte le state Terraform ;
+- **`infra/envs/<env>`** (module `data_platform`), appliqué par la CI :
+  - 3 buckets GCS : `raw` (brut, un chemin par run, expiré après la rétention), `enriched` (sorties du LLM, encore vide) et `meltano-state` (state Meltano, versionné) ;
+  - le dataset BigQuery `raw` (avec la table externe sur le bucket `raw`), et en prod ceux des couches dbt (`staging`, `intermediate`, `marts`, `snapshots`) ; en dev et en CI, dbt crée lui-même son dataset unique ;
+  - 3 service accounts au moindre privilège : `sa-extract`, `sa-dbt`, `sa-enrich`, et leurs droits sur ces buckets et datasets ;
+- **`infra/identity/<env>`**, appliqué à la main :
+  - un service account de déploiement `sa-deployer` et un pool Workload Identity Federation, limités à ce dépôt, à des GitHub Environments précis et, en prod, à la branche `main` (module `github_wif`) ;
+  - une alerte de budget mensuel et un quota BigQuery quotidien sur les octets facturés (module `cost_guardrails`).
 
 **Aucune clé JSON** n'existe : en local, j'agis par impersonation de service accounts ; depuis GitHub Actions, l'accès passe par Workload Identity Federation.
 
