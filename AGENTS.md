@@ -12,7 +12,7 @@ Pipeline ELT d'offres d'emploi (API France Travail → GCS → BigQuery → dbt)
 | `transformation/` | Transformations BigQuery (dbt Fusion) | [dbt.md](.continue/rules/dbt.md) |
 | `deploy/` | Version de prod (`prod-version`) et son contrôle (`resolve-prod-ref.sh`) | [README](deploy/README.md) |
 | `enrichment/`, `oracle/`, `orchestration/` | Vides (`.gitkeep`), à venir | |
-| `.github/workflows/` | Collecte quotidienne en prod, test WIF | [github_actions.md](.continue/rules/github_actions.md) |
+| `.github/workflows/` | Collecte quotidienne en prod | [github_actions.md](.continue/rules/github_actions.md) |
 | `.github/settings/` | Rulesets et paramètres du dépôt GitHub, appliqués à la main, `check.sh` pour la dérive | [README](.github/settings/README.md) |
 
 ## Environnements
