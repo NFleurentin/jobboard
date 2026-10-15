@@ -15,7 +15,7 @@
         materialized='incremental',
         unique_key=['offer_key', '_valid_from'],
         incremental_strategy='merge',
-        incremental_predicates=['DBT_INTERNAL_DEST._valid_to is null'],
+        incremental_predicates=['DBT_INTERNAL_DEST._valid_to IS null'],
         partition_by={'field': '_valid_to', 'data_type': 'timestamp', 'granularity': 'month'},
         cluster_by=['offer_key'],
         on_schema_change='append_new_columns'
@@ -32,24 +32,24 @@ filtered AS (
 
     {% if is_incremental() %}
 
-        selecT * from source
-        where
+        SELECT * FROM source
+        WHERE
             _valid_from > (
-                select coalesce(max(_valid_from), timestamp('1970-01-01')) from {{ this }}
+                SELECT coalesce(max(_valid_from), timestamp('1970-01-01')) FROM {{ this }}
             )
 
-        union distinct
+        UNION DISTINCT
 
-        select * from source
-        where _valid_to > (
-            select coalesce(max(_valid_to), timestamp('1970-01-01'))
-            from {{ this }}
-            where _valid_to is not null
+        SELECT * FROM source
+        WHERE _valid_to > (
+            SELECT coalesce(max(_valid_to), timestamp('1970-01-01'))
+            FROM {{ this }}
+            WHERE _valid_to IS NOT null
         )
 
     {% else %}
 
-        select * from source
+        SELECT * FROM source
 
     {% endif %}
 
