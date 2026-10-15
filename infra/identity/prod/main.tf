@@ -23,6 +23,14 @@ module "github_wif" {
   }
 }
 
+module "cost_guardrails" {
+  source                  = "../../modules/cost_guardrails"
+  project_id              = var.project_id
+  billing_account         = var.billing_account
+  monthly_budget          = var.monthly_budget
+  query_usage_per_day_mib = var.query_usage_per_day_mib
+}
+
 output "github_variables" {
   description = "Valeurs à reporter dans les variables du GitHub Environment."
   value = {

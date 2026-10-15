@@ -22,10 +22,11 @@ Ces règles couvrent l'infrastructure GCP décrite avec Terraform : organisation
 | `infra/bootstrap/bootstrap.sh` | Projets, facturation, APIs, bucket tfstate (gcloud, rejouable) | — |
 | `infra/modules/data_platform` | Buckets `raw`/`enriched`/`meltano-state`, dataset `raw` (avec la table externe `raw.france_travail_offers_ext`), datasets des couches dbt (prod), SA `sa-extract`/`sa-dbt`/`sa-enrich`, IAM | — |
 | `infra/modules/github_wif` | Pool WIF, `sa-deployer`, liaison service account ↔ GitHub Environment | — |
+| `infra/modules/cost_guardrails` | Alerte de budget du projet, quota quotidien BigQuery | — |
 | `infra/envs/<env>` | Instancie `data_platform` | `platform` |
-| `infra/identity/<env>` | Instancie `github_wif` | `identity` |
+| `infra/identity/<env>` | Instancie `github_wif` et `cost_guardrails` | `identity` |
 
-- `identity/` est séparé de `envs/` volontairement : la CI ne peut pas modifier sa propre porte d'entrée, et détruire la plateforme dev ne supprime pas le pool WIF. Ne pas fusionner les deux states.
+- `identity/` est séparé de `envs/` volontairement : la CI ne peut pas modifier sa propre porte d'entrée ni ses garde-fous de coût, et détruire la plateforme dev ne supprime pas le pool WIF. Ne pas fusionner les deux states.
 - Un répertoire par environnement plutôt que des workspaces : l'environnement visé est visible dans le chemin.
 - Le code de `envs/dev` et `envs/prod` reste identique. Les différences passent par `var.env` dans le module (ex. rétention du brut 7 j / 30 j) ou par `terraform.tfvars`.
 - Créer un module seulement quand un même ensemble de ressources est utilisé au moins deux fois.

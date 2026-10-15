@@ -18,6 +18,8 @@ APIS=(
   sts.googleapis.com # Echange du jeton GitHub contre un accès GCP (WIF)                 
   cloudresourcemanager.googleapis.com # Terraform l'utilise pour lire l'état des APIs
   serviceusage.googleapis.com # Terraform nécessite cette API pour gérer les services Google Cloud
+  billingbudgets.googleapis.com # Alerte de budget (identity/, module cost_guardrails)
+  cloudquotas.googleapis.com # Quota quotidien BigQuery (identity/, module cost_guardrails)
 )
 
 echo "Compte actif : $(gcloud config get-value account 2>/dev/null)"
@@ -50,4 +52,4 @@ for E in dev prod; do
   gcloud storage buckets update "$BUCKET" --versioning
 done
 
-echo "Terminé. N'oublie pas de créer l'alerte de budget (console : Facturation > Budgets et alertes)."
+echo "Terminé. Alerte de budget et quota BigQuery : terraform apply dans infra/identity/<env>."
