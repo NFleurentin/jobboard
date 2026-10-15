@@ -35,6 +35,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false # ce job ne pousse rien : pas de jeton gardé sur le runner
 
       - name: Installer uv
         uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
@@ -65,6 +67,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false # ce job ne pousse rien : pas de jeton gardé sur le runner
 
       - name: Lire la version de Terraform
         run: grep -E '^TF_(VERSION|SHA256)=' infra/terraform.env >> "$GITHUB_ENV"
@@ -110,6 +114,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false # ce job ne pousse rien : pas de jeton gardé sur le runner
 
       # Même version que le pipeline de prod : la CI valide ce qui sera exécuté
       - name: Lire la version de dbt Fusion

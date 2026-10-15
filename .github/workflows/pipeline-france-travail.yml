@@ -70,19 +70,19 @@ jobs:
     environment: ${{ inputs.environment == 'dev' && 'dev' || 'prod-collect' }}
     env:
       MELTANO_ENVIRONMENT: ${{ inputs.environment == 'dev' && 'dev' || 'prod' }}
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.resolve.outputs.sha }}
+          persist-credentials: false # ce job ne pousse rien : pas de jeton gardé sur le runner
 
-      - name: Générer les identifiants du run
-        run: |
-          echo "GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID }}" >> "$GITHUB_ENV"
-          echo "INGESTED_AT=$(date -u +%Y%m%dT%H%M%SZ)" >> "$GITHUB_ENV"
+      - name: Générer l'identifiant du run
+        run: echo "INGESTED_AT=$(date -u +%Y%m%dT%H%M%SZ)" >> "$GITHUB_ENV"
 
-      # Installation avant l'authentification GCP : le code téléchargé ne voit pas les credentials
+      # Installations avant l'authentification GCP : le code téléchargé ne voit pas les credentials
       - name: Installer uv
         uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
@@ -94,15 +94,15 @@ jobs:
           uv sync --frozen
           echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
 
+      - name: Installer les plugins Meltano (tap et target)
+        working-directory: extraction
+        run: meltano --environment="$MELTANO_ENVIRONMENT" install
+
       - name: Authentification GCP (Workload Identity Federation)
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
           service_account: ${{ vars.EXTRACT_SA }}
-
-      - name: Installer les plugins Meltano (tap et target)
-        working-directory: extraction
-        run: meltano --environment="$MELTANO_ENVIRONMENT" install
 
       - name: Extraction
         working-directory: extraction
@@ -136,6 +136,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.resolve.outputs.sha }}
+          persist-credentials: false # ce job ne pousse rien : pas de jeton gardé sur le runner
 
       # Installations avant l'authentification GCP : le code téléchargé ne voit pas les credentials
       - name: Installer uv
