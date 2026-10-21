@@ -27,3 +27,4 @@ L'offre complète est dans la colonne `raw` (JSON) : `raw ->> '$.entreprise.nom'
 | Fichier | Contenu |
 |---|---|
 | [01_field_profile.sql](01_field_profile.sql) | Profil de tous les champs, à tous les niveaux : présence, type, valeurs, motifs |
+| [02_company.sql](02_company.sql) | Entreprise : normalisation du nom, stabilité, intermédiaires, noms suspects, attributs |
