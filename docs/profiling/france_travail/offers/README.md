@@ -29,3 +29,4 @@ L'offre complète est dans la colonne `raw` (JSON) : `raw ->> '$.entreprise.nom'
 | [01_field_profile.sql](01_field_profile.sql) | Profil de tous les champs, à tous les niveaux : présence, type, valeurs, motifs |
 | [02_company.sql](02_company.sql) | Entreprise : normalisation du nom, stabilité, intermédiaires, noms suspects, attributs |
 | [03_contract_duration.sql](03_contract_duration.sql) | Type et durée du contrat : libellés, unités, motif de durée, nature et alternance |
+| [04_salary.sql](04_salary.sql) | Salaire : formats du libellé, montants et plages plausibles, mois de paie, commentaire, compléments |
