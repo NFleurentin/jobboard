@@ -31,3 +31,4 @@ L'offre complète est dans la colonne `raw` (JSON) : `raw ->> '$.entreprise.nom'
 | [03_contract_duration.sql](03_contract_duration.sql) | Type et durée du contrat : libellés, unités, motif de durée, nature et alternance |
 | [04_salary.sql](04_salary.sql) | Salaire : formats du libellé, montants et plages plausibles, mois de paie, commentaire, compléments |
 | [05_lists.sql](05_lists.sql) | Listes (compétences, qualités, langues, permis, formations) : clés candidates, exigences, doublons |
+| [06_reopenings.sql](06_reopenings.sql) | Clôtures et réouvertures : volume par run, absences, trous de collecte |
