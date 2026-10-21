@@ -165,7 +165,7 @@ Il ne dépend pas d'`INGESTED_AT` : il rattrape tous les runs terminés en atten
 - [x] Extraction France Travail → GCS (Meltano), state distant, run.sh
 - [X] Workflow GitHub Actions planifié (collecte quotidienne)
 - [x] Brut lu en place dans GCS (table externe), runs choisis et contrôlés par `loading/load.py` avant le snapshot
-- [ ] Modélisation dbt (staging, marts) et tests *(en cours : snapshot SCD2, staging, `int_offers`, `fct_offers`, `dim_date` ; schéma en étoile cible conçu dans `docs/offers_star_schema.md`)*
+- [ ] Modélisation dbt (staging, marts) et tests *(en cours : snapshot SCD2, staging, `int_offers`, `fct_offers`, `dim_date` ; schéma en étoile cible conçu dans `docs/offers_star_schema.md`, règles fondées sur le profilage du brut)*
 - [ ] Premier dashboard
 - [x] Protection de `main` et paramètres GitHub versionnés, contrôlés par `.github/settings/check.sh`
 - [x] Releases (tags `vX.Y.Z` protégés) et promotion explicite de la version de prod (`deploy/prod-version`)
@@ -189,7 +189,7 @@ extraction/     Projet Meltano, tap France Travail, run.sh (point d'entrée de l
 loading/        Chargement des runs terminés dans le snapshot dbt (load.py)
 transformation/ Projet dbt (snapshot, staging, intermediate, marts)
 deploy/         Version de prod (prod-version) et son contrôle (resolve-prod-ref.sh)
-docs/           Documents de conception (schéma en étoile des offres)
+docs/           Documents de conception (schéma en étoile des offres), profilage des sources
 enrichment/     Enrichissement LLM (à venir)
 oracle/         Migrations, packages PL/SQL, application APEX, données fictives (à venir)
 orchestration/  Orchestration Airflow (à venir)
@@ -248,6 +248,8 @@ orchestration/  Orchestration Airflow (à venir)
 | `dim_offers` en 1:1 avec `fct_offers`, la fait réduite aux clés, dates et mesures | dimension commune aux faits à venir (`fct_applications`, `fct_offer_matches`) : une fait ne pointe jamais vers une autre fait | attributs descriptifs dans la fait (une jointure de moins, mais pas de point d'entrée pour les autres faits) |
 | Schéma en étoile sans snowflake : hiérarchies à plat (lieu, ROME, NAF, siège, maison mère), relations N:N par bridges rattachés à la fait | une jointure par axe d'analyse, lisible par les outils de BI ; le stockage en colonnes rend la redondance quasi gratuite | dimensions normalisées en cascade (ville → département → région), liens entre dimensions |
 | Mart indépendant de la source : `offer_id` haché sur (source, identifiant d'origine), codes de chaque source traduits en valeurs communes en intermediate, nomenclatures publiques (ROME, INSEE, NAF) | d'autres sources d'offres suivront France Travail sans changer le mart | codes France Travail dans le mart (D/S/E, `MIS`…), identifiant d'origine comme clé |
+| Profilage du brut de prod en DuckDB sur une copie locale (`docs/profiling/`), avant d'écrire les marts | règles du schéma en étoile vérifiées sur les données réelles, sans attendre la fin du staging ; dev a trop peu de données. Requêtes versionnées et rejouables, données hors du dépôt (contacts), valeurs personnelles masquées par défaut. Coût négligeable dans les deux cas (environ 120 Mo) | profilage du staging en BigQuery (staging inachevé, il mesurerait ses propres regex), copie de la prod en dev (données personnelles hors de la prod, isolation des environnements) |
+| Clôture d'une offre après deux runs consécutifs d'absence, appliquée dans le mart | une absence d'un seul run est le plus souvent un trou de collecte (même run, date d'actualisation inchangée) : `closed_date` et la durée de publication restent justes. Le snapshot reste la trace brute | clôture dès la première absence (fausses clôtures), délai de grâce dans le snapshot (modifie la source d'historique) |
 | Tables de marts au pluriel (`fct_offers`, `dim_companies`, `bridge_offers_skills`) | convention du guide dbt Labs, que suit le projet | singulier (convention Kimball) |
 
 **Laissé de côté volontairement :** environnement de recette, orchestrateur managé, GPU cloud, Secret Manager.
