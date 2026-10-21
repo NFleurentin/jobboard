@@ -43,7 +43,7 @@ erDiagram
     INT64 contract_duration_value "durée du contrat saisie, NULL pour un CDI"
     STRING contract_duration_unit "unité de contract_duration_value"
     FLOAT64 contract_duration_months "durée du contrat convertie en mois"
-    STRING salary_periodicity "annual, monthly, hourly"
+    STRING salary_periodicity "annual, monthly, daily, hourly"
     NUMERIC salary_min_eur "minimum dans l'unité de salary_periodicity"
     NUMERIC salary_max_eur "maximum dans l'unité de salary_periodicity"
     NUMERIC annual_salary_min_eur "minimum converti en brut annuel"
@@ -68,7 +68,7 @@ erDiagram
     STRING working_schedule_type "horaires, ex. journée, travail posté"
     STRING working_conditions "conditions particulières, ex. nuit, week-end, astreintes"
     STRING offer_language "langue de l'offre, ISO 639-1"
-    BOOL is_via_intermediary "publiée par un cabinet, une ESN ou une agence d'intérim, enrichissement"
+    BOOL is_via_intermediary "publiée par un cabinet, une ESN, une agence d'intérim ou un agrégateur"
     BOOL offer_is_adapted "offre réservée aux entreprises adaptées"
     BOOL is_disability_accessible "offre accessible aux travailleurs handicapés"
     BOOL lacks_candidates "métier en manque de candidats"
@@ -238,16 +238,20 @@ erDiagram
 
 ## Hypothèses et règles de calcul
 
-- **Salaire annuel** : mensuel × 12, sauf si le libellé précise un autre nombre de mois ; horaire × 1 820 h (35 h × 52). Hors d'une plage plausible, la valeur convertie vaut `NULL` et la valeur d'origine est conservée. Un salaire absent reste `NULL`, jamais 0.
-- **Durée du contrat** : convertie en mois depuis la valeur et l'unité saisies (jours ÷ 30,44, à confirmer selon les unités présentes dans le staging). `NULL` pour un CDI.
+Les règles propres à France Travail ont été établies par profilage du brut de prod (requêtes dans [profiling/france_travail/offers/](profiling/france_travail/offers/)) : 13 runs du 9 au 21 octobre 2026, 3 216 offres distinctes. Les fréquences citées portent sur cette période ; les règles qui reposent sur des valeurs observées (unités de durée, périodicités, codes d'avantages) seront gardées par des tests `accepted_values` en staging, qui signaleront toute nouvelle valeur.
+
+- **Salaire annuel** : mensuel × 12, sauf si le libellé ou le commentaire précise un autre nombre de mois (12 à 14 observés, décimale avec point ou virgule) ; horaire × 1 820 h (35 h × 52) ; journalier × 218 jours (plafond du forfait jours d'un cadre, référence usuelle pour comparer un taux journalier à un salaire). Plages plausibles avant conversion : annuel 15 000 à 200 000, mensuel 1 200 à 15 000, horaire 9 à 100 ; hors plage (périodicité mal saisie, maximum aberrant), la valeur convertie vaut `NULL` et la valeur d'origine est conservée. Un salaire absent reste `NULL`, jamais 0.
+- **Salaire chez France Travail** : le libellé suit `<Annuel|Mensuel|Horaire> de N Euros [à N Euros] [sur N mois]`, parfois suivi de texte libre après ` - ` (avantages, rappel du montant), ignoré. Les offres de profession libérale (`LIB`) n'ont pas de libellé : leur taux journalier est dans le commentaire (`500 € par jour`, `450-500 € par jour`), d'où la périodicité `daily`. Les autres commentaires (`Selon profil`, `-  /`) ne sont pas des montants.
+- **Durée du contrat** : convertie en mois depuis la valeur et l'unité saisies (mois tels quels, jours ÷ 30,44). `NULL` pour les contrats sans durée (CDI, profession libérale). Chez France Travail, la durée est dans le libellé du type de contrat (`CDD - 12 Mois`, `Intérim - 30 Jour(s)`), toujours présente pour un CDD ou une mission d'intérim ; seules les unités `Mois` et `Jour(s)` ont été observées.
 - **Durée hebdomadaire** : convertie depuis `working_hours_*` du staging selon leur périodicité.
-- **Clôture** : une offre est considérée clôturée à sa disparition de la collecte, d'après le snapshot (à confirmer).
+- **Clôture** : une offre est considérée clôturée à sa disparition de la collecte, d'après le snapshot, mais seulement après **deux runs consécutifs d'absence** ; `closed_date` est alors le jour du premier run manquant. Une absence d'un seul run est le plus souvent un trou de collecte : sur 77 réouvertures après un run d'absence, 74 n'ont pas changé de date d'actualisation, et 76 portaient sur le même run. Les absences plus longues s'accompagnent d'une republication (date d'actualisation modifiée) : ce sont de vraies réouvertures, et l'offre reprend sa dernière version. Le snapshot n'est pas modifié : il garde la version close, le délai de grâce s'applique dans le mart.
 - **Lieu** : le grain de `dim_locations` est la commune INSEE. Les offres localisées seulement au département, à la région ou au pays ont une ligne au niveau partiel, et une ligne « inconnu » couvre les offres sans lieu.
-- **Compétences** : `dim_skills` regroupe les listes compétences, langues, permis, qualités professionnelles et outils bureautiques, distinguées par `skill_category`.
-- **Formations** : `dim_educations` a pour grain le couple niveau et domaine de formation ; l'exigence et le commentaire, propres à chaque offre, sont dans le bridge (champs à confirmer pour chaque source ; `formations_json` pour France Travail).
-- **Avantages** : `dim_benefits` est alimentée par les compléments de salaire des sources (`salary_complements_json` pour France Travail).
+- **Compétences** : `dim_skills` regroupe les listes compétences, langues, permis et qualités professionnelles, distinguées par `skill_category`. La clé naturelle est le couple (catégorie, libellé) : chez France Travail, le code de compétence est fiable (un libellé par code) mais absent pour 14 % des compétences, surtout des technologies (`SQL`, `Power BI`, `Python`). `is_mandatory` vient de l'exigence (`E` exigée, `S` souhaitée) ; les qualités professionnelles n'en ont pas et valent `false`.
+- **Formations** : `dim_educations` a pour grain le couple niveau et domaine de formation ; le domaine est absent pour plus de la moitié des formations, la ligne porte alors le niveau seul. L'exigence et le commentaire (texte libre), propres à chaque offre, sont dans le bridge ; une formation citée deux fois dans une offre est dédoublonnée en gardant l'exigence la plus forte. Chez France Travail, le code de domaine correspond un pour un au libellé de domaine.
+- **Avantages** : `dim_benefits` est alimentée par les compléments de salaire des sources. Chez France Travail, c'est la liste `listeComplements` (14 codes stables, ex. titres restaurant, complémentaire santé, CSE) ; `complement1` et `complement2` n'en sont que les deux premiers éléments et ne sont pas lus.
 - **Pertinence** : `match_score` et ses composantes sont calculés pour chaque couple (offre, profil) ; la formule reste à définir.
-- **Entreprise** : France Travail ne fournit pas d'identifiant d'entreprise dans le staging actuel ; la clé est dérivée du nom normalisé (à vérifier dans le brut), avec une ligne « non renseignée » pour les offres anonymes. Le SIREN, s'il est disponible pour une source, deviendra la clé naturelle à privilégier.
+- **Entreprise** : France Travail ne fournit aucun identifiant d'entreprise, même dans le brut ; la clé est dérivée du nom normalisé (minuscules, sans accents, ponctuation et espaces réduits), sans retirer les formes juridiques, qui n'apportaient presque aucun regroupement. Une ligne « non renseignée » couvre les offres sans nom (21 %) et les noms dont la clé est vide (`LTd`, `""`). Le lieu de travail n'entre pas dans la clé : c'est le lieu du poste, pas celui de l'entreprise, et il éclaterait une entreprise qui recrute dans plusieurs villes (148 noms, deux tiers des offres nommées). Deux entreprises homonymes sont donc confondues ; le SIREN, issu de l'enrichissement ou d'une source qui le fournit, deviendra la clé naturelle et lèvera cette limite. Quand un attribut (NAF, tranche d'effectif, description) varie d'une offre à l'autre pour une même clé, la dimension garde celui de l'offre la plus récente.
+- **Intermédiaires** : `is_via_intermediary` vaut `true` pour un code NAF d'agence d'intérim ou de placement (division 78) et pour les agrégateurs identifiés (`Collective.work`, plus d'un quart des offres nommées, sans NAF) ; sinon il vient de l'enrichissement.
 - **Expérience** : chaque source est traduite en `experience_requirement` (pour France Travail : D → `not_required`, S → `preferred`, E → `required`). `experience_min_years` est extrait du libellé quand il le précise.
 - **Référentiels** : ROME, INSEE et NAF sont les nomenclatures du mart. Pour une source qui ne les fournit pas, ils sont déduits par l'enrichissement ou laissés `NULL`, avec une ligne « non renseigné » dans la dimension concernée.
 
@@ -257,7 +261,7 @@ Les colonnes viennent des sources de collecte, après normalisation en intermedi
 
 Certains attributs n'existent que chez une source (`lacks_candidates`, `offer_is_adapted`, `is_disability_accessible`, `is_adapted`, `is_disability_committed` pour France Travail) : ils valent `NULL` pour les autres.
 
-Les colonnes marquées « enrichissement » dans le diagramme viennent d'une extraction par LLM sur la description de l'offre (`remote_policy`, `seniority_level`, `is_via_intermediary`, compétences de catégorie technologie) ou de référentiels externes (API Sirene ou annuaire des entreprises de data.gouv.fr pour le SIREN, la maison mère, l'année de création, le siège et la convention collective).
+Les colonnes marquées « enrichissement » dans le diagramme viennent d'une extraction par LLM sur la description de l'offre (`remote_policy`, `seniority_level`, `is_via_intermediary` quand le NAF et la liste des agrégateurs ne suffisent pas, compétences de catégorie technologie) ou de référentiels externes (API Sirene ou annuaire des entreprises de data.gouv.fr pour le SIREN, la maison mère, l'année de création, le siège et la convention collective).
 
 Les coordonnées de contact (`contact_*`, `agency_*`) sont exclues du mart, conformément à la règle du dépôt. L'adresse du domicile n'est jamais stockée dans BigQuery : seul le résultat du calcul de distance (`distance_band`) y figure.
 
