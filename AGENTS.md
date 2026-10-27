@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Pipeline ELT d'offres d'emploi (API France Travail → GCS → BigQuery → dbt), pour analyser le marché et suivre une recherche d'emploi personnelle. Le [README.md](README.md) fait référence pour l'architecture, l'avancement et surtout la table « Choix techniques et compromis » : la consulter avant de proposer une alternative déjà écartée.
+Pipeline ELT d'offres d'emploi (API France Travail → GCS → BigQuery → dbt), pour analyser le marché de l'emploi data. Le suivi de la recherche d'emploi personnelle (Oracle, PL/SQL, APEX) est un projet séparé. Le [README.md](README.md) fait référence pour l'architecture, l'avancement et surtout la table « Choix techniques et compromis » : la consulter avant de proposer une alternative déjà écartée.
 
 ## Organisation
 
@@ -11,7 +11,7 @@ Pipeline ELT d'offres d'emploi (API France Travail → GCS → BigQuery → dbt)
 | `loading/` | `load.py` : runs terminés → snapshot dbt (garde-fou de volume, `dbt snapshot`, `dbt build`) | ci-dessous |
 | `transformation/` | Transformations BigQuery (dbt Fusion) | [dbt.md](.continue/rules/dbt.md) |
 | `deploy/` | Version de prod (`prod-version`) et son contrôle (`resolve-prod-ref.sh`) | [README](deploy/README.md) |
-| `enrichment/`, `oracle/`, `orchestration/` | Vides (`.gitkeep`), à venir | |
+| `enrichment/`, `orchestration/` | Vides (`.gitkeep`), à venir | |
 | `.github/workflows/` | Collecte quotidienne en prod | [github_actions.md](.continue/rules/github_actions.md) |
 | `.github/settings/` | Rulesets et paramètres du dépôt GitHub, appliqués à la main, `check.sh` pour la dérive | [README](.github/settings/README.md) |
 
