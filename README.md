@@ -1,6 +1,6 @@
-# Observatoire du marché de l'emploi & outil de suivi de recherche
+# Observatoire du marché de l'emploi data
 
-> Pipeline de données de bout en bout sur les offres d'emploi, enrichies par un LLM open source, transformées avec **dbt** sur **BigQuery**, et complétées par une application **Oracle APEX** de validation et de suivi de candidatures.
+> Pipeline de données de bout en bout sur les offres d'emploi des métiers de la data, enrichies par un LLM open source et transformées avec **dbt** sur **BigQuery**.
 
 **Statut : 🚧 en construction** (voir [l'avancement](#avancement))
 
@@ -8,20 +8,15 @@
 
 ## Pourquoi ce projet
 
-Ce projet a deux objectifs :
+**Analyser le marché de l'emploi data** (compétences demandées, salaires, télétravail, tendances par métier et par région) à partir de données réelles et à jour.
 
-1. **Analyser le marché de l'emploi** (compétences demandées, salaires, télétravail, tendances par métier et par région) à partir de données réelles et à jour.
-2. **M'outiller dans ma propre recherche d'emploi** : identifier les offres pertinentes pour mes profils, suivre mes candidatures et mesurer mon propre funnel (offres vues → candidatures → entretiens).
-
-Je suis développeur PL/SQL avec 11 ans d'expérience, en transition vers l'**analytics engineering**. Le projet combine donc deux facettes : une plateforme de données moderne (ELT, dbt, tests, documentation) et une application Oracle APEX.
+Je suis développeur PL/SQL avec 11 ans d'expérience. Ce projet met en œuvre une plateforme de données moderne (ELT, dbt, tests, documentation, infrastructure et CI/CD). Le suivi de ma propre recherche d'emploi (offres pertinentes, candidatures, entretiens) fait l'objet d'un projet séparé, en Oracle, PL/SQL et APEX *(à venir)*.
 
 ## Questions auxquelles le projet répond
 
 - Quelles compétences sont les plus demandées pour un métier donné, et comment évoluent-elles dans le temps ?
 - Quelles sont les fourchettes de salaire par métier, région et niveau d'expérience ?
 - Quelle part des offres proposent du télétravail ?
-- Quelles offres correspondent le mieux à mes profils (Analytics Engineer, PL/SQL / APEX) ?
-- Quel est mon taux de conversion à chaque étape de ma recherche, et quels types d'offres donnent des retours ?
 
 ## Architecture
 
@@ -34,17 +29,14 @@ flowchart LR
     ENR -.-> BQ
     BQ -->|dbt| MARTS[(BigQuery<br/>staging / marts)]
     MARTS -.-> DASH[Dashboard]
-    MARTS -.->|offres pertinentes| ORA[(Oracle<br/>APEX)]
-    ORA -.->|corrections & suivi<br/>sans données sensibles| BQ
 ```
 
 Traits pleins : flux en place. Pointillés : flux à venir (voir [l'avancement](#avancement)).
 
 **Principes de conception**
 - **Le brut n'est jamais réécrit** : chaque exécution écrit dans un nouveau chemin, ce qui permet de rejouer les étapes en aval. Le bucket `raw` est la seule copie du brut et expire après 7 jours en dev, 30 en prod : au-delà, seul le snapshot dbt garde l'historique des offres.
-- **BigQuery est la source analytique, Oracle est propriétaire des corrections humaines et du suivi de candidatures.** Un seul système de vérité par type de donnée.
 - **Deux environnements isolés** (dev et prod), un projet GCP chacun, mêmes définitions de code, configuration différente.
-- **Rien de sensible dans le dépôt, données personnelles cantonnées** : les coordonnées de contact publiées par France Travail (nom de recruteur, e-mail, téléphone) sont conservées dans le brut et extraites en staging pour mon usage personnel, mais exclues dès la couche intermédiaire, donc des marts et de toute vue publique ; mes propres contacts et notes restent dans Oracle.
+- **Rien de sensible dans le dépôt, données personnelles cantonnées** : les coordonnées de contact publiées par France Travail (nom de recruteur, e-mail, téléphone) sont conservées dans le brut et extraites en staging pour mon usage personnel, mais exclues dès la couche intermédiaire, donc des marts et de toute vue publique.
 
 ## Stack technique
 
@@ -55,7 +47,6 @@ Traits pleins : flux en place. Pointillés : flux à venir (voir [l'avancement](
 | Enrichissement | LLM open source exécuté en local (Ollama ou llama.cpp), sorties structurées validées par schéma *(à venir)* |
 | Entrepôt | BigQuery (région `europe-west1`) |
 | Transformation | dbt (moteur Fusion) |
-| Application | Oracle Autonomous Database + APEX, PL/SQL *(à venir)* |
 | Infrastructure | Terraform |
 | CI/CD | GitHub Actions, authentification GCP sans clé (Workload Identity Federation) |
 | Orchestration | Airflow *(à venir)* |
@@ -170,10 +161,7 @@ Il ne dépend pas d'`INGESTED_AT` : il rattrape tous les runs terminés en atten
 - [x] Protection de `main` et paramètres GitHub versionnés, contrôlés par `.github/settings/check.sh`
 - [x] Releases (tags `vX.Y.Z` protégés) et promotion explicite de la version de prod (`deploy/prod-version`)
 - [ ] CI/CD (lint, plan Terraform, dbt sur pull request) *(en cours : validation statique sur pull request, checks obligatoires sur `main`, build dbt des modèles modifiés dans `pr_<n>`, plan Terraform de dev sur pull request, apply Terraform de dev au merge et de prod à la promotion d'une release)*
-- [ ] Score de pertinence par règles
-- [ ] Application APEX v1 (offres pertinentes, suivi de candidatures)
 - [ ] Enrichissement LLM et jeu d'évaluation
-- [ ] Synchronisation BigQuery ⇄ Oracle, funnel personnel
 - [ ] Orchestration
 
 ## Données et conformité
@@ -191,7 +179,6 @@ transformation/ Projet dbt (snapshot, staging, intermediate, marts)
 deploy/         Version de prod (prod-version) et son contrôle (resolve-prod-ref.sh)
 docs/           Documents de conception (schéma en étoile des offres), profilage des sources
 enrichment/     Enrichissement LLM (à venir)
-oracle/         Migrations, packages PL/SQL, application APEX, données fictives (à venir)
 orchestration/  Orchestration Airflow (à venir)
 .github/        Workflows CI/CD
 .continue/      Règles des assistants IA (partagées avec Claude Code) et agent Continue local
@@ -201,6 +188,7 @@ orchestration/  Orchestration Airflow (à venir)
 
 | Choix | Raison | Alternative écartée |
 |---|---|---|
+| Suivi de la recherche d'emploi dans un projet séparé (Oracle, PL/SQL, APEX), qui collecte lui-même ses offres auprès de l'API France Travail | deux finalités et deux publics distincts : ce dépôt se concentre sur l'analyse du marché, l'outil personnel sur le suivi des offres et des entretiens. Aucun couplage entre les dépôts : pas de compte GCP pour Oracle, pas de clé d'accès à GCS, pas de coordonnées de contact au-delà du staging. Limite : la collecte et le parsing des offres existent en double | application Oracle APEX dans ce dépôt, alimentée par les marts ou par le snapshot (dépendance aux marts encore en conception, schéma interne de dbt exposé), lecture du brut GCS par Oracle (le brut devient une interface entre dépôts, authentification GCP depuis Oracle à résoudre) |
 | Un projet GCP par environnement | isolation simple et sûre des données et des droits | un seul projet avec des préfixes |
 | Deux environnements (dev, prod) | projet à un seul utilisateur ; des datasets éphémères par pull request et l'approbation de la prod jouent le rôle d'un environnement de test | un troisième environnement de recette |
 | Identifiants de projet avec suffixe aléatoire | unicité mondiale exigée par GCP, sans information personnelle | un suffixe lié à mon identité |

@@ -268,4 +268,3 @@ Les coordonnées de contact (`contact_*`, `agency_*`) sont exclues du mart, conf
 ## Pistes non retenues pour l'instant
 
 - Dédoublonnage entre sources : une même offre collectée sur plusieurs sources a aujourd'hui plusieurs `offer_id`. Le regrouper demanderait un identifiant d'offre canonique et une règle de choix de l'offre de référence.
-- `fct_applications`, au grain de la candidature, pour le suivi de la recherche d'emploi : elle partagera les dimensions de ce schéma.
