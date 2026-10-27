@@ -6,10 +6,7 @@ Document de conception du datamart des offres d'emploi, préalable à l'écritur
 
 `fct_offers` contient **une ligne par offre**, dans son dernier état connu. L'historique des versions n'est pas porté par le mart : il reste dans le snapshot dbt, dont sont dérivés les attributs d'historique (`closed_date`, `publication_duration_days`). Une analyse des changements d'une offre ferait l'objet d'une seconde table de faits, au grain de la version.
 
-`fct_offers` ne garde que les clés, les dates et les mesures ; les attributs descriptifs de l'offre sont dans `dim_offers`, en 1:1 avec la fait, qui servira aussi de dimension commune à la future `fct_applications`. Les bridges restent rattachés à la fait et se joignent par `offer_id`, présent dans les deux tables.
-
-`fct_offer_matches` contient une ligne par couple (offre, profil de recherche) : elle mesure la pertinence d'une offre pour chacun des profils cibles de `dim_profiles`.
-
+`fct_offers` ne garde que les clés, les dates et les mesures ; les attributs descriptifs de l'offre sont dans `dim_offers`, en 1:1 avec la fait. Les bridges restent rattachés à la fait et se joignent par `offer_id`, présent dans les deux tables.
 ## Conventions
 
 - Tables au pluriel, selon le guide dbt Labs (`fct_offers`, `dim_companies`), y compris les bridges.
@@ -196,24 +193,6 @@ erDiagram
     STRING benefit_name "libellé de l'avantage"
   }
 
-  DIM_PROFILES {
-    STRING profile_id PK
-    STRING profile_name "profil cible, ex. Analytics Engineer"
-    STRING target_rome_code "code ROME visé"
-    NUMERIC target_annual_salary_min_eur "salaire annuel minimum visé"
-    STRING target_remote_policy "télétravail souhaité"
-  }
-
-  FCT_OFFER_MATCHES {
-    STRING offer_id PK, FK
-    STRING profile_id PK, FK
-    DATE computed_date FK "date du calcul"
-    FLOAT64 match_score "pertinence globale, de 0 à 1"
-    FLOAT64 skill_coverage_ratio "part des compétences du profil demandées par l'offre"
-    NUMERIC salary_gap_eur "écart au salaire annuel minimum visé"
-    STRING distance_band "tranche de distance depuis le domicile, ex. 0-10 km"
-  }
-
   DIM_OFFERS ||--|| FCT_OFFERS : "décrit"
   DIM_COMPANIES ||--o{ FCT_OFFERS : "publie"
   DIM_EMPLOYMENT_TERMS ||--o{ FCT_OFFERS : "conditions d'emploi de"
@@ -230,10 +209,6 @@ erDiagram
   DIM_EDUCATIONS ||--o{ BRIDGE_OFFERS_EDUCATIONS : "est demandée par"
   FCT_OFFERS ||--o{ BRIDGE_OFFERS_BENEFITS : "propose"
   DIM_BENEFITS ||--o{ BRIDGE_OFFERS_BENEFITS : "est proposé par"
-  DIM_OFFERS ||--o{ FCT_OFFER_MATCHES : "est évaluée dans"
-  DIM_PROFILES ||--o{ FCT_OFFER_MATCHES : "évalue"
-  DIM_DATES ||--o{ FCT_OFFER_MATCHES : "calcul de"
-
 ```
 
 ## Hypothèses et règles de calcul
@@ -249,7 +224,6 @@ Les règles propres à France Travail ont été établies par profilage du brut 
 - **Compétences** : `dim_skills` regroupe les listes compétences, langues, permis et qualités professionnelles, distinguées par `skill_category`. La clé naturelle est le couple (catégorie, libellé) : chez France Travail, le code de compétence est fiable (un libellé par code) mais absent pour 14 % des compétences, surtout des technologies (`SQL`, `Power BI`, `Python`). `is_mandatory` vient de l'exigence (`E` exigée, `S` souhaitée) ; les qualités professionnelles n'en ont pas et valent `false`.
 - **Formations** : `dim_educations` a pour grain le couple niveau et domaine de formation ; le domaine est absent pour plus de la moitié des formations, la ligne porte alors le niveau seul. L'exigence et le commentaire (texte libre), propres à chaque offre, sont dans le bridge ; une formation citée deux fois dans une offre est dédoublonnée en gardant l'exigence la plus forte. Chez France Travail, le code de domaine correspond un pour un au libellé de domaine.
 - **Avantages** : `dim_benefits` est alimentée par les compléments de salaire des sources. Chez France Travail, c'est la liste `listeComplements` (14 codes stables, ex. titres restaurant, complémentaire santé, CSE) ; `complement1` et `complement2` n'en sont que les deux premiers éléments et ne sont pas lus.
-- **Pertinence** : `match_score` et ses composantes sont calculés pour chaque couple (offre, profil) ; la formule reste à définir.
 - **Entreprise** : France Travail ne fournit aucun identifiant d'entreprise, même dans le brut ; la clé est dérivée du nom normalisé (minuscules, sans accents, ponctuation et espaces réduits), sans retirer les formes juridiques, qui n'apportaient presque aucun regroupement. Une ligne « non renseignée » couvre les offres sans nom (21 %) et les noms dont la clé est vide (`LTd`, `""`). Le lieu de travail n'entre pas dans la clé : c'est le lieu du poste, pas celui de l'entreprise, et il éclaterait une entreprise qui recrute dans plusieurs villes (148 noms, deux tiers des offres nommées). Deux entreprises homonymes sont donc confondues ; le SIREN, issu de l'enrichissement ou d'une source qui le fournit, deviendra la clé naturelle et lèvera cette limite. Quand un attribut (NAF, tranche d'effectif, description) varie d'une offre à l'autre pour une même clé, la dimension garde celui de l'offre la plus récente.
 - **Intermédiaires** : `is_via_intermediary` vaut `true` pour un code NAF d'agence d'intérim ou de placement (division 78) et pour les agrégateurs identifiés (`Collective.work`, plus d'un quart des offres nommées, sans NAF) ; sinon il vient de l'enrichissement.
 - **Expérience** : chaque source est traduite en `experience_requirement` (pour France Travail : D → `not_required`, S → `preferred`, E → `required`). `experience_min_years` est extrait du libellé quand il le précise.
@@ -263,7 +237,7 @@ Certains attributs n'existent que chez une source (`lacks_candidates`, `offer_is
 
 Les colonnes marquées « enrichissement » dans le diagramme viennent d'une extraction par LLM sur la description de l'offre (`remote_policy`, `seniority_level`, `is_via_intermediary` quand le NAF et la liste des agrégateurs ne suffisent pas, compétences de catégorie technologie) ou de référentiels externes (API Sirene ou annuaire des entreprises de data.gouv.fr pour le SIREN, la maison mère, l'année de création, le siège et la convention collective).
 
-Les coordonnées de contact (`contact_*`, `agency_*`) sont exclues du mart, conformément à la règle du dépôt. L'adresse du domicile n'est jamais stockée dans BigQuery : seul le résultat du calcul de distance (`distance_band`) y figure.
+Les coordonnées de contact (`contact_*`, `agency_*`) sont exclues du mart, conformément à la règle du dépôt.
 
 ## Pistes non retenues pour l'instant
 
